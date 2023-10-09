@@ -1,12 +1,14 @@
-package cs451;
+package cs451.Links;
 
-public class Link{
+/**
+ * Class representing a link between two hosts.
+ */
+public interface Link {
 
-    private int src;
-    private int dst;
+    public abstract void send();
 
-    public abstract send();
+    public abstract void receive();
 
-    public abstract receive();
+    public abstract void start();
 
 }
