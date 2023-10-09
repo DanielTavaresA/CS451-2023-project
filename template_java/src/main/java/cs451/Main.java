@@ -1,17 +1,15 @@
 package cs451;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.Socket;
+import cs451.Parser.Host;
+import cs451.Parser.Parser;
 
 public class Main {
 
     private static void handleSignal() {
-        //immediately stop network packet processing
+        // immediately stop network packet processing
         System.out.println("Immediately stopping network packet processing.");
 
-        //write/flush output file if necessary
+        // write/flush output file if necessary
         System.out.println("Writing output.");
     }
 
@@ -33,12 +31,13 @@ public class Main {
         // example
         long pid = ProcessHandle.current().pid();
         System.out.println("My PID: " + pid + "\n");
-        System.out.println("From a new terminal type `kill -SIGINT " + pid + "` or `kill -SIGTERM " + pid + "` to stop processing packets\n");
+        System.out.println("From a new terminal type `kill -SIGINT " + pid + "` or `kill -SIGTERM " + pid
+                + "` to stop processing packets\n");
 
         System.out.println("My ID: " + parser.myId() + "\n");
         System.out.println("List of resolved hosts is:");
         System.out.println("==========================");
-        for (Host host: parser.hosts()) {
+        for (Host host : parser.hosts()) {
             System.out.println(host.getId());
             System.out.println("Human-readable IP: " + host.getIp());
             System.out.println("Human-readable Port: " + host.getPort());
@@ -60,6 +59,7 @@ public class Main {
 
         // After a process finishes broadcasting,
         // it waits forever for the delivery of messages.
+
         while (true) {
             // Sleep for 1 hour
             Thread.sleep(60 * 60 * 1000);
