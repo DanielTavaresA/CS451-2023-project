@@ -6,6 +6,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
+import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
 import cs451.Parser.Host;
 import cs451.Parser.Parser;
@@ -67,16 +68,10 @@ public class Main {
         // After a process finishes broadcasting,
         // it waits forever for the delivery of messages.
 
-
-
         // Initiates a UDPHost on the port and IP of the current host
         List<Host> hosts = parser.hosts();
         Host myHost = hosts.get(parser.myId() - 1);
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp());
-
-        // Creates a packet to send to all other hosts
-        String message = "Hello World!";
-        DatagramPacket packet = new DatagramPacket(message.getBytes(), message.length());
 
         Thread.sleep(5000);
 
@@ -85,28 +80,9 @@ public class Main {
             if (host.getId() == parser.myId()) {
                 continue;
             }
-            InetAddress address;
-            try {
-                address = InetAddress.getByName(host.getIp());
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-                continue;
-            }
-            packet.setAddress(address);
-            packet.setPort(host.getPort());
-            myUDPHost.send(packet);
+            PerfectLink perfLink = new PerfectLink(myUDPHost, host.getPort(), host.getIp());
+            perfLink.start();
         }
-
-        // waits for messages
-        int expectedMsg = 2;
-        while(expectedMsg != 0){
-            if(myUDPHost.receive()){
-                expectedMsg--;
-            }
-        }
-
-        System.out.println("Done broadcasting and delivering messages.\n");
-
 
         while (true) {
             // Sleep for 1 hour

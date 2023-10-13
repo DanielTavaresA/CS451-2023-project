@@ -7,6 +7,11 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+import javax.management.StringValueExp;
+
+import cs451.Models.Message;
+import cs451.Models.MsgType;
+
 public class UDPHost {
 
     private DatagramSocket socket;
@@ -26,7 +31,7 @@ public class UDPHost {
             System.err.println("IP address is not valid!");
             running = false;
             return;
-        } catch (SecurityException s){
+        } catch (SecurityException s) {
             System.err.println("Cannot resolve address, SecurityException");
             running = false;
             return;
@@ -38,8 +43,7 @@ public class UDPHost {
             e.printStackTrace();
             running = false;
             return;
-        }
-        catch (SecurityException s){
+        } catch (SecurityException s) {
             System.err.println("Cannot resolve Socket, SecurityException");
             running = false;
             return;
@@ -47,11 +51,18 @@ public class UDPHost {
         running = true;
     }
 
+    /**
+     * Sends a packet to the host. Sets timeout to 5 seconds.
+     * 
+     * @param packet DatagramPacket to send.
+     * @return true if the packet was sent successfully, false otherwise.
+     */
     public boolean send(DatagramPacket packet) {
         System.out.println(
                 "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort() + " with length "
                         + packet.getLength() + " and data " + new String(packet.getData()));
         try {
+            socket.setSoTimeout(5000);
             socket.send(packet);
         } catch (IOException e) {
             e.printStackTrace();
@@ -60,25 +71,41 @@ public class UDPHost {
         return true;
     }
 
-    public boolean receive() {
+    /**
+     * Receives a packet from the host. Sets timeout to 5 seconds.
+     * 
+     * @return DatagramPacket received from the host. Returns null if an error
+     *         occurs.
+     */
+    public DatagramPacket receive() {
         byte[] buf = new byte[1024];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         try {
             socket.setSoTimeout(5000);
         } catch (SocketException e) {
             e.printStackTrace();
+            return null;
         }
         try {
             socket.receive(packet);
-
-            System.out.println("Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
-                    + " with length "
-                    + packet.getLength() + " and data " + new String(packet.getData()));
         } catch (IOException e) {
             e.printStackTrace();
-            return false;
+            return null;
         }
-        return true;
+
+        System.out.println(
+                "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
+                        + " with length "
+                        + packet.getLength() + " and data " + new String(packet.getData()));
+        return packet;
+    }
+
+    public int getPort() {
+        return socket.getPort();
+    }
+
+    public InetAddress getAddress() {
+        return socket.getInetAddress();
     }
 
 }
