@@ -7,11 +7,6 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
-import javax.management.StringValueExp;
-
-import cs451.Models.Message;
-import cs451.Models.MsgType;
-
 public class UDPHost {
 
     private DatagramSocket socket;
@@ -60,7 +55,7 @@ public class UDPHost {
     public boolean send(DatagramPacket packet) {
         System.out.println(
                 "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort() + " with length "
-                        + packet.getLength() + " and data " + new String(packet.getData()));
+                        + packet.getLength() + " and hashcode " + packet.hashCode());
         try {
             socket.setSoTimeout(5000);
             socket.send(packet);
@@ -96,7 +91,7 @@ public class UDPHost {
         System.out.println(
                 "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
                         + " with length "
-                        + packet.getLength() + " and data " + new String(packet.getData()));
+                        + packet.getLength() + " and hashcode " + packet.hashCode());
         return packet;
     }
 

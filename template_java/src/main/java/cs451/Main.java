@@ -6,8 +6,12 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
+import cs451.Links.FairLossLink;
 import cs451.Links.PerfectLink;
+import cs451.Links.StubbornLink;
 import cs451.Links.UDPHost;
+import cs451.Models.Message;
+import cs451.Models.MsgType;
 import cs451.Parser.Host;
 import cs451.Parser.Parser;
 
@@ -72,17 +76,78 @@ public class Main {
         List<Host> hosts = parser.hosts();
         Host myHost = hosts.get(parser.myId() - 1);
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp());
+        FairLossLink fairLossLink = new FairLossLink();
 
         Thread.sleep(5000);
 
-        // Broadcast
+        /*
+         * // Broadcast
+         * for (Host host : hosts) {
+         * if (host.getId() == parser.myId()) {
+         * continue;
+         * }
+         * PerfectLink perfLink = new PerfectLink(myUDPHost, host.getPort(),
+         * host.getIp());
+         * perfLink.start();
+         * }
+         */
+
+        // Send - Recieve Fair Loss
+
+        Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
+
         for (Host host : hosts) {
+            // if we are the host, send to all other hosts
             if (host.getId() == parser.myId()) {
+                for (Host dest : hosts) {
+                    if (dest.getId() == parser.myId()) {
+                        continue;
+                    }
+                    InetAddress destAddress;
+                    try {
+                        destAddress = InetAddress.getByName(dest.getIp());
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                        continue;
+                    }
+                    fairLossLink.send(m, myUDPHost, destAddress, dest.getPort());
+                }
                 continue;
+            } else {
+                fairLossLink.deliver(myUDPHost);
             }
-            PerfectLink perfLink = new PerfectLink(myUDPHost, host.getPort(), host.getIp());
-            perfLink.start();
         }
+
+        System.out.println("Done Fair loss");
+
+        // Send - Recieve StubbornLink
+
+        StubbornLink stubbornLink = new StubbornLink();
+
+        for (Host host : hosts) {
+            // if we are the host, send to all other hosts
+            if (host.getId() == parser.myId()) {
+                for (Host dest : hosts) {
+                    if (dest.getId() == parser.myId()) {
+                        continue;
+                    }
+                    InetAddress destAddress;
+                    try {
+                        destAddress = InetAddress.getByName(dest.getIp());
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                        continue;
+                    }
+                    stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
+                }
+                continue;
+            } else {
+                stubbornLink.deliver(myUDPHost);
+            }
+        }
+
+        System.out.println("Done Stubborn");
+        System.out.println("Done, go sleep for 1 hour");
 
         while (true) {
             // Sleep for 1 hour

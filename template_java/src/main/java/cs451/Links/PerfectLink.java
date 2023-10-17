@@ -31,48 +31,43 @@ public class PerfectLink implements Link {
     }
 
     @Override
-    public boolean send(Message m) {
+    public boolean send(Message m, UDPHost host, InetAddress dest, int port) {
         byte[] bytes = m.toBytes();
         DatagramPacket packet = new DatagramPacket(bytes, bytes.length, destAddress, destPort);
         return src.send(packet);
     }
 
     @Override
-    public boolean receive() {
+    public DatagramPacket deliver(UDPHost host) {
         DatagramPacket packet = src.receive();
         Message msg = Message.fromBytes(packet.getData());
 
         switch (msg.getType()) {
-            case SYN:
-                Message synAckMsg = new Message(MsgType.SYN_ACK, msg.getSeqNum() + 1, new byte[0]);
-                send(synAckMsg);
-                break;
             case ACK:
-                break;
-            case SYN_ACK:
-                Message ackMsg = new Message(MsgType.ACK, msg.getSeqNum() + 1, new byte[0]);
-                send(ackMsg);
                 break;
             case DATA:
                 Message ackDataMsg = new Message(MsgType.ACK, msg.getSeqNum(), new byte[0]);
-                send(ackDataMsg);
+                send(ackDataMsg, host, packet.getAddress(), packet.getPort());
                 break;
             default:
-                return false;
+                return null;
         }
-        return true;
+        return packet;
 
     }
 
-    @Override
-    public void start() {
-        Message synMsg = new Message(MsgType.SYN, 0, new byte[0]);
-        if (send(synMsg)) {
-            if (receive()) {
-                System.out.println("Perfect link established between " + src.getAddress().getHostAddress() + ":"
-                        + src.getPort() + " and " + destAddress.getHostAddress() + ":" + destPort);
-            }
-        }
-    }
+    /*
+     * @Override
+     * public void start() {
+     * Message synMsg = new Message(MsgType.SYN, 0, new byte[0]);
+     * if (send(synMsg)) {
+     * if (receive()) {
+     * System.out.println("Perfect link established between " +
+     * src.getAddress().getHostAddress() + ":"
+     * + src.getPort() + " and " + destAddress.getHostAddress() + ":" + destPort);
+     * }
+     * }
+     * }
+     */
 
 }
