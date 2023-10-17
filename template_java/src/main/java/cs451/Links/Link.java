@@ -2,6 +2,7 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.util.concurrent.Future;
 
 import cs451.Models.Message;
 
@@ -10,8 +11,8 @@ import cs451.Models.Message;
  */
 public interface Link {
 
-    public abstract boolean send(Message m, UDPHost host, InetAddress dest, int port);
+    public abstract Future<Boolean> send(Message m, UDPHost host, InetAddress dest, int port);
 
-    public abstract DatagramPacket deliver(UDPHost host);
+    public abstract Future<DatagramPacket> deliver(UDPHost host);
 
 }

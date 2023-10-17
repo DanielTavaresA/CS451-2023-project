@@ -2,6 +2,9 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import cs451.Models.Message;
 
@@ -15,13 +18,14 @@ import cs451.Models.Message;
 public class FairLossLink implements Link {
 
     @Override
-    public boolean send(Message m, UDPHost host, InetAddress dest, int port) {
+    public Future<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
         DatagramPacket packet = new DatagramPacket(m.toBytes(), m.toBytes().length, dest, port);
         return host.send(packet);
+
     }
 
     @Override
-    public DatagramPacket deliver(UDPHost host) {
+    public Future<DatagramPacket> deliver(UDPHost host) {
         return host.receive();
     }
 

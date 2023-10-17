@@ -2,6 +2,7 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.util.concurrent.Future;
 
 import cs451.Models.Message;
 import cs451.Models.MsgType;
@@ -30,29 +31,37 @@ public class PerfectLink implements Link {
         }
     }
 
+    /* */
     @Override
-    public boolean send(Message m, UDPHost host, InetAddress dest, int port) {
-        byte[] bytes = m.toBytes();
-        DatagramPacket packet = new DatagramPacket(bytes, bytes.length, destAddress, destPort);
-        return src.send(packet);
+    public Future<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
+        return null;
+        /*
+         * byte[] bytes = m.toBytes();
+         * DatagramPacket packet = new DatagramPacket(bytes, bytes.length, destAddress,
+         * destPort);
+         * return src.send(packet);
+         */
     }
 
     @Override
-    public DatagramPacket deliver(UDPHost host) {
-        DatagramPacket packet = src.receive();
-        Message msg = Message.fromBytes(packet.getData());
-
-        switch (msg.getType()) {
-            case ACK:
-                break;
-            case DATA:
-                Message ackDataMsg = new Message(MsgType.ACK, msg.getSeqNum(), new byte[0]);
-                send(ackDataMsg, host, packet.getAddress(), packet.getPort());
-                break;
-            default:
-                return null;
-        }
-        return packet;
+    public Future<DatagramPacket> deliver(UDPHost host) {
+        return null;
+        /*
+         * DatagramPacket packet = src.receive();
+         * Message msg = Message.fromBytes(packet.getData());
+         * 
+         * switch (msg.getType()) {
+         * case ACK:
+         * break;
+         * case DATA:
+         * Message ackDataMsg = new Message(MsgType.ACK, msg.getSeqNum(), new byte[0]);
+         * send(ackDataMsg, host, packet.getAddress(), packet.getPort());
+         * break;
+         * default:
+         * return null;
+         * }
+         * return packet;
+         */
 
     }
 

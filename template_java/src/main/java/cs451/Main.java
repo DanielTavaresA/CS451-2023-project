@@ -121,32 +121,33 @@ public class Main {
         System.out.println("Done Fair loss");
 
         // Send - Recieve StubbornLink
-
-        StubbornLink stubbornLink = new StubbornLink();
-
-        for (Host host : hosts) {
-            // if we are the host, send to all other hosts
-            if (host.getId() == parser.myId()) {
-                for (Host dest : hosts) {
-                    if (dest.getId() == parser.myId()) {
-                        continue;
-                    }
-                    InetAddress destAddress;
-                    try {
-                        destAddress = InetAddress.getByName(dest.getIp());
-                    } catch (UnknownHostException e) {
-                        e.printStackTrace();
-                        continue;
-                    }
-                    stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
-                }
-                continue;
-            } else {
-                stubbornLink.deliver(myUDPHost);
-            }
-        }
-
-        System.out.println("Done Stubborn");
+        /*
+         * StubbornLink stubbornLink = new StubbornLink();
+         * 
+         * for (Host host : hosts) {
+         * // if we are the host, send to all other hosts
+         * if (host.getId() == parser.myId()) {
+         * for (Host dest : hosts) {
+         * if (dest.getId() == parser.myId()) {
+         * continue;
+         * }
+         * InetAddress destAddress;
+         * try {
+         * destAddress = InetAddress.getByName(dest.getIp());
+         * } catch (UnknownHostException e) {
+         * e.printStackTrace();
+         * continue;
+         * }
+         * stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
+         * }
+         * continue;
+         * } else {
+         * stubbornLink.deliver(myUDPHost);
+         * }
+         * }
+         * 
+         * System.out.println("Done Stubborn");
+         */
         System.out.println("Done, go sleep for 1 hour");
 
         while (true) {

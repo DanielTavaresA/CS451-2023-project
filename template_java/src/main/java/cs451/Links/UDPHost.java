@@ -6,10 +6,14 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class UDPHost {
 
     private DatagramSocket socket;
+    ExecutorService executor = Executors.newCachedThreadPool();
     private boolean running;
 
     public UDPHost(int portNbr, String ip) {
@@ -52,18 +56,20 @@ public class UDPHost {
      * @param packet DatagramPacket to send.
      * @return true if the packet was sent successfully, false otherwise.
      */
-    public boolean send(DatagramPacket packet) {
-        System.out.println(
-                "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort() + " with length "
-                        + packet.getLength() + " and hashcode " + packet.hashCode());
-        try {
-            socket.setSoTimeout(5000);
-            socket.send(packet);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-        return true;
+    public Future<Boolean> send(DatagramPacket packet) {
+        return executor.submit(() -> {
+            System.out.println(
+                    "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
+                            + " with length "
+                            + packet.getLength() + " and hashcode " + packet.hashCode());
+            try {
+                socket.send(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+            return true;
+        });
     }
 
     /**
@@ -72,27 +78,24 @@ public class UDPHost {
      * @return DatagramPacket received from the host. Returns null if an error
      *         occurs.
      */
-    public DatagramPacket receive() {
-        byte[] buf = new byte[1024];
-        DatagramPacket packet = new DatagramPacket(buf, buf.length);
-        try {
-            socket.setSoTimeout(5000);
-        } catch (SocketException e) {
-            e.printStackTrace();
-            return null;
-        }
-        try {
-            socket.receive(packet);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+    public Future<DatagramPacket> receive() {
+        return executor.submit(() -> {
+            byte[] buf = new byte[1024];
+            DatagramPacket packet = new DatagramPacket(buf, buf.length);
+            try {
+                socket.receive(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
 
-        System.out.println(
-                "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
-                        + " with length "
-                        + packet.getLength() + " and hashcode " + packet.hashCode());
-        return packet;
+            System.out.println(
+                    "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
+                            + " with length "
+                            + packet.getLength() + " and hashcode " + packet.hashCode());
+            return packet;
+        });
+
     }
 
     public int getPort() {
