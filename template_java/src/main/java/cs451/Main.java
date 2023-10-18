@@ -5,6 +5,9 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import cs451.Links.FairLossLink;
 import cs451.Links.PerfectLink;
@@ -96,6 +99,9 @@ public class Main {
 
         Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
 
+        List<CompletableFuture<Boolean>> sendFutures = new ArrayList<>();
+        List<CompletableFuture<DatagramPacket>> recvFutures = new ArrayList<>();
+
         for (Host host : hosts) {
             // if we are the host, send to all other hosts
             if (host.getId() == parser.myId()) {
@@ -110,12 +116,20 @@ public class Main {
                         e.printStackTrace();
                         continue;
                     }
-                    fairLossLink.send(m, myUDPHost, destAddress, dest.getPort());
+                    sendFutures.add(fairLossLink.send(m, myUDPHost, destAddress, dest.getPort()));
                 }
                 continue;
             } else {
-                fairLossLink.deliver(myUDPHost);
+                recvFutures.add(fairLossLink.deliver(myUDPHost));
             }
+        }
+
+        try {
+            CompletableFuture.allOf(sendFutures.toArray(new CompletableFuture[0])).get();
+            CompletableFuture.allOf(recvFutures.toArray(new CompletableFuture[0])).get();
+        } catch (ExecutionException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
 
         System.out.println("Done Fair loss");

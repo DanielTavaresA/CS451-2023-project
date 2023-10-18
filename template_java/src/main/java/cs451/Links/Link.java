@@ -2,7 +2,7 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 
 import cs451.Models.Message;
 
@@ -11,8 +11,8 @@ import cs451.Models.Message;
  */
 public interface Link {
 
-    public abstract Future<Boolean> send(Message m, UDPHost host, InetAddress dest, int port);
+    public abstract CompletableFuture<Boolean> send(Message m, UDPHost host, InetAddress dest, int port);
 
-    public abstract Future<DatagramPacket> deliver(UDPHost host);
+    public abstract CompletableFuture<DatagramPacket> deliver(UDPHost host);
 
 }

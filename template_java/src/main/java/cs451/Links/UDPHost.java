@@ -6,9 +6,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 public class UDPHost {
 
@@ -56,8 +56,8 @@ public class UDPHost {
      * @param packet DatagramPacket to send.
      * @return true if the packet was sent successfully, false otherwise.
      */
-    public Future<Boolean> send(DatagramPacket packet) {
-        return executor.submit(() -> {
+    public CompletableFuture<Boolean> send(DatagramPacket packet) {
+        return CompletableFuture.supplyAsync(() -> {
             System.out.println(
                     "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
                             + " with length "
@@ -78,8 +78,8 @@ public class UDPHost {
      * @return DatagramPacket received from the host. Returns null if an error
      *         occurs.
      */
-    public Future<DatagramPacket> receive() {
-        return executor.submit(() -> {
+    public CompletableFuture<DatagramPacket> receive() {
+        return CompletableFuture.supplyAsync(() -> {
             byte[] buf = new byte[1024];
             DatagramPacket packet = new DatagramPacket(buf, buf.length);
             try {

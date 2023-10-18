@@ -2,7 +2,7 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 
 import cs451.Models.Message;
 import cs451.Models.MsgType;
@@ -33,7 +33,7 @@ public class PerfectLink implements Link {
 
     /* */
     @Override
-    public Future<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
+    public CompletableFuture<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
         return null;
         /*
          * byte[] bytes = m.toBytes();
@@ -44,7 +44,7 @@ public class PerfectLink implements Link {
     }
 
     @Override
-    public Future<DatagramPacket> deliver(UDPHost host) {
+    public CompletableFuture<DatagramPacket> deliver(UDPHost host) {
         return null;
         /*
          * DatagramPacket packet = src.receive();

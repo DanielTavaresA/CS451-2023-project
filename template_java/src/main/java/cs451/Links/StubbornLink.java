@@ -5,7 +5,6 @@ import java.net.InetAddress;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import cs451.Models.Message;
 import cs451.utils.AtomicSet;
@@ -22,7 +21,7 @@ public class StubbornLink implements Link {
     }
 
     @Override
-    public Future<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
+    public CompletableFuture<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
         while (!ackedMessages.contains(m.getId())) {
             try {
                 fairLossLink.send(m, host, dest, port).get();
@@ -35,7 +34,7 @@ public class StubbornLink implements Link {
     }
 
     @Override
-    public Future<DatagramPacket> deliver(UDPHost host) {
+    public CompletableFuture<DatagramPacket> deliver(UDPHost host) {
         DatagramPacket packet;
         try {
             packet = fairLossLink.deliver(host).get();
