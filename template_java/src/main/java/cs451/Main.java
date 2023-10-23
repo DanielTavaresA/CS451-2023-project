@@ -80,6 +80,7 @@ public class Main {
         Host myHost = hosts.get(parser.myId() - 1);
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp());
         myUDPHost.receive();
+        /*
         FairLossLink fairLossLink = new FairLossLink(myUDPHost);
 
         Thread.sleep(5000);
@@ -98,8 +99,8 @@ public class Main {
 
         // Send - Recieve Fair Loss
 
-        Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
-
+        
+/*
         for (Host host : hosts) {
             // if we are the host, send to all other hosts
             if (host.getId() == parser.myId()) {
@@ -114,6 +115,7 @@ public class Main {
                         e.printStackTrace();
                         continue;
                     }
+                    Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
                     fairLossLink.send(m, myUDPHost, destAddress, dest.getPort());
                 }
                 continue;
@@ -122,6 +124,8 @@ public class Main {
         Thread.sleep(10000);
 
         System.out.println("Done Fair loss");
+        
+        */
 
         // Send - Recieve StubbornLink
 
@@ -140,11 +144,10 @@ public class Main {
                         e.printStackTrace();
                         continue;
                     }
+                    Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
                     stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
                 }
                 continue;
-            } else {
-                stubbornLink.deliver(null);
             }
         }
 

@@ -10,13 +10,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class UDPHost implements Publisher<DatagramPacket>{
 
     private DatagramSocket socket;
     private final SubmissionPublisher<DatagramPacket> publisher = new SubmissionPublisher<>();
     
-    private boolean running;
+    private AtomicBoolean running = new AtomicBoolean(false);
 
     public UDPHost(int portNbr, String ip) {
         if (portNbr < 0 || portNbr > 65535) {
@@ -30,11 +31,11 @@ public class UDPHost implements Publisher<DatagramPacket>{
             address = InetAddress.getByName(ip);
         } catch (UnknownHostException e) {
             System.err.println("IP address is not valid!");
-            running = false;
+            running.set(false);
             return;
         } catch (SecurityException s) {
             System.err.println("Cannot resolve address, SecurityException");
-            running = false;
+            running.set(false);
             return;
         }
 
@@ -42,18 +43,18 @@ public class UDPHost implements Publisher<DatagramPacket>{
             socket = new DatagramSocket(portNbr, address);
         } catch (SocketException e) {
             e.printStackTrace();
-            running = false;
+            running.set(false);
             return;
         } catch (SecurityException s) {
             System.err.println("Cannot resolve Socket, SecurityException");
-            running = false;
+            running.set(false);
             return;
         }
-        running = true;
+        running.set(true);;
     }
 
     /**
-     * Sends a packet to the host. Sets timeout to 5 seconds.
+     * Sends a packet to the host.
      * 
      * @param packet DatagramPacket to send.
      * @return true if the packet was sent successfully, false otherwise.
@@ -75,21 +76,21 @@ public class UDPHost implements Publisher<DatagramPacket>{
     }
 
     /**
-     * Receives a packet from the host. Sets timeout to 5 seconds.
+     * Receives a packet from the host.
      * 
-     * @return DatagramPacket received from the host. Returns null if an error
+     * @return DatagramPacket received from the host. Returns false if an error
      *         occurs.
      */
     public CompletableFuture<Boolean> receive() {
         return CompletableFuture.supplyAsync(() -> {
-            while(running){
+            while(running.get()){
                 byte[] buf = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
             try {
                 socket.receive(packet);
             } catch (IOException e) {
                 e.printStackTrace();
-                return null;
+                return false;
             }
             System.out.println(
                     "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
@@ -103,12 +104,17 @@ public class UDPHost implements Publisher<DatagramPacket>{
 
     }
 
+    public void stop() {
+        running.set(false);
+        socket.close();
+    }
+
     public int getPort() {
-        return socket.getPort();
+        return socket.getLocalPort();
     }
 
     public InetAddress getAddress() {
-        return socket.getInetAddress();
+        return socket.getLocalAddress();
     }
 
     @Override

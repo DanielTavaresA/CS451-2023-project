@@ -21,12 +21,14 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket> {
 
     public FairLossLink(UDPHost host) {
         host.subscribe(this);
+        
     }
 
 
     @Override
     public CompletableFuture<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
         DatagramPacket packet = new DatagramPacket(m.toBytes(), m.toBytes().length, dest, port);
+        System.out.println("[FLL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
         return host.send(packet);
 
     }
@@ -34,7 +36,7 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket> {
     @Override
     public CompletableFuture<Boolean> deliver(DatagramPacket packet) {
         Message msg = Message.fromBytes(packet.getData());
-        System.out.println("[FFL] - Delivering packet : " + msg.toString());
+        System.out.println("[FLL] - Delivering message : " + msg.getId() + " from " + packet.getAddress().getHostAddress() + ":" + packet.getPort());
         return CompletableFuture.completedFuture(true);
     }
 
