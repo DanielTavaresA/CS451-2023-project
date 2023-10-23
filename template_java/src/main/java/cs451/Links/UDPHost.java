@@ -7,13 +7,15 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscriber;
 
-public class UDPHost {
+public class UDPHost implements Publisher<DatagramPacket>{
 
     private DatagramSocket socket;
-    ExecutorService executor = Executors.newCachedThreadPool();
+    private final SubmissionPublisher<DatagramPacket> publisher = new SubmissionPublisher<>();
+    
     private boolean running;
 
     public UDPHost(int portNbr, String ip) {
@@ -78,22 +80,25 @@ public class UDPHost {
      * @return DatagramPacket received from the host. Returns null if an error
      *         occurs.
      */
-    public CompletableFuture<DatagramPacket> receive() {
+    public CompletableFuture<Boolean> receive() {
         return CompletableFuture.supplyAsync(() -> {
-            byte[] buf = new byte[1024];
-            DatagramPacket packet = new DatagramPacket(buf, buf.length);
+            while(running){
+                byte[] buf = new byte[1024];
+                DatagramPacket packet = new DatagramPacket(buf, buf.length);
             try {
                 socket.receive(packet);
             } catch (IOException e) {
                 e.printStackTrace();
                 return null;
             }
-
             System.out.println(
                     "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
                             + " with length "
                             + packet.getLength() + " and hashcode " + packet.hashCode());
-            return packet;
+            publisher.submit(packet);
+                
+            }
+            return true;
         });
 
     }
@@ -104,6 +109,11 @@ public class UDPHost {
 
     public InetAddress getAddress() {
         return socket.getInetAddress();
+    }
+
+    @Override
+    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+        publisher.subscribe(subscriber);
     }
 
 }

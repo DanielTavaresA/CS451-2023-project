@@ -3,8 +3,8 @@ package cs451.Links;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.Flow.Subscription;
 
 import cs451.Models.Message;
 
@@ -15,7 +15,14 @@ import cs451.Models.Message;
  * - FL2 : Finite duplication : If a message is sent a finite number of times then m is delivered a finite number of times
  * - FL3 : No creation : No message is delivered unless it was sent
  */
-public class FairLossLink implements Link {
+public class FairLossLink implements Link, Subscriber<DatagramPacket> {
+
+    private Subscription subscription;
+
+    public FairLossLink(UDPHost host) {
+        host.subscribe(this);
+    }
+
 
     @Override
     public CompletableFuture<Boolean> send(Message m, UDPHost host, InetAddress dest, int port) {
@@ -25,8 +32,35 @@ public class FairLossLink implements Link {
     }
 
     @Override
-    public CompletableFuture<DatagramPacket> deliver(UDPHost host) {
-        return host.receive();
+    public CompletableFuture<Boolean> deliver(DatagramPacket packet) {
+        Message msg = Message.fromBytes(packet.getData());
+        System.out.println("[FFL] - Delivering packet : " + msg.toString());
+        return CompletableFuture.completedFuture(true);
     }
+
+    @Override
+    public void onSubscribe(Subscription subscription) {
+        this.subscription = subscription;
+        subscription.request(1);
+
+    }
+
+    @Override
+    public void onNext(DatagramPacket item) {
+        deliver(item);
+        subscription.request(1);
+        
+    }
+
+    @Override
+    public void onError(Throwable throwable) {
+        throwable.printStackTrace();
+    }
+
+    @Override
+    public void onComplete() {
+        System.out.println("Completed");
+    }
+
 
 }

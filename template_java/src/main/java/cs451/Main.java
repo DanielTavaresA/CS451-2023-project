@@ -79,7 +79,8 @@ public class Main {
         List<Host> hosts = parser.hosts();
         Host myHost = hosts.get(parser.myId() - 1);
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp());
-        FairLossLink fairLossLink = new FairLossLink();
+        myUDPHost.receive();
+        FairLossLink fairLossLink = new FairLossLink(myUDPHost);
 
         Thread.sleep(5000);
 
@@ -99,9 +100,6 @@ public class Main {
 
         Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
 
-        List<CompletableFuture<Boolean>> sendFutures = new ArrayList<>();
-        List<CompletableFuture<DatagramPacket>> recvFutures = new ArrayList<>();
-
         for (Host host : hosts) {
             // if we are the host, send to all other hosts
             if (host.getId() == parser.myId()) {
@@ -116,52 +114,41 @@ public class Main {
                         e.printStackTrace();
                         continue;
                     }
-                    sendFutures.add(fairLossLink.send(m, myUDPHost, destAddress, dest.getPort()));
+                    fairLossLink.send(m, myUDPHost, destAddress, dest.getPort());
                 }
                 continue;
-            } else {
-                recvFutures.add(fairLossLink.deliver(myUDPHost));
-            }
+            } 
         }
-
-        try {
-            CompletableFuture.allOf(sendFutures.toArray(new CompletableFuture[0])).get();
-            CompletableFuture.allOf(recvFutures.toArray(new CompletableFuture[0])).get();
-        } catch (ExecutionException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        Thread.sleep(10000);
 
         System.out.println("Done Fair loss");
 
         // Send - Recieve StubbornLink
-        /*
-         * StubbornLink stubbornLink = new StubbornLink();
-         * 
-         * for (Host host : hosts) {
-         * // if we are the host, send to all other hosts
-         * if (host.getId() == parser.myId()) {
-         * for (Host dest : hosts) {
-         * if (dest.getId() == parser.myId()) {
-         * continue;
-         * }
-         * InetAddress destAddress;
-         * try {
-         * destAddress = InetAddress.getByName(dest.getIp());
-         * } catch (UnknownHostException e) {
-         * e.printStackTrace();
-         * continue;
-         * }
-         * stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
-         * }
-         * continue;
-         * } else {
-         * stubbornLink.deliver(myUDPHost);
-         * }
-         * }
-         * 
-         * System.out.println("Done Stubborn");
-         */
+
+        StubbornLink stubbornLink = new StubbornLink(myUDPHost);
+        for (Host host : hosts) {
+            // if we are the host, send to all other hosts
+            if (host.getId() == parser.myId()) {
+                for (Host dest : hosts) {
+                    if (dest.getId() == parser.myId()) {
+                        continue;
+                    }
+                    InetAddress destAddress;
+                    try {
+                        destAddress = InetAddress.getByName(dest.getIp());
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                        continue;
+                    }
+                    stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
+                }
+                continue;
+            } else {
+                stubbornLink.deliver(null);
+            }
+        }
+
+        System.out.println("Done Stubborn");
         System.out.println("Done, go sleep for 1 hour");
 
         while (true) {

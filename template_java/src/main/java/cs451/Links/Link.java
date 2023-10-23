@@ -13,6 +13,7 @@ public interface Link {
 
     public abstract CompletableFuture<Boolean> send(Message m, UDPHost host, InetAddress dest, int port);
 
-    public abstract CompletableFuture<DatagramPacket> deliver(UDPHost host);
+    public abstract CompletableFuture<Boolean> deliver(DatagramPacket packet);
+
 
 }

@@ -44,7 +44,7 @@ public class PerfectLink implements Link {
     }
 
     @Override
-    public CompletableFuture<DatagramPacket> deliver(UDPHost host) {
+    public CompletableFuture<Boolean> deliver(DatagramPacket packet) {
         return null;
         /*
          * DatagramPacket packet = src.receive();
