@@ -128,7 +128,7 @@ public class Main {
 
         // Send - Recieve StubbornLink
 
-        StubbornLink stubbornLink = new StubbornLink(myUDPHost);
+        PerfectLink perfLink = new PerfectLink(myUDPHost);
         for (Host host : hosts) {
             // if we are the host, send to all other hosts
             if (host.getId() == parser.myId()) {
@@ -144,7 +144,7 @@ public class Main {
                         continue;
                     }
                     Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
-                    stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
+                    perfLink.send(m, myUDPHost, destAddress, dest.getPort());
                     System.out.println("Does not wait");
                 }
                 continue;

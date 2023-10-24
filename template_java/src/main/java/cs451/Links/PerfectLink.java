@@ -2,6 +2,12 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.Flow.Subscription;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import cs451.Models.Message;
 import cs451.Models.MsgType;
@@ -14,66 +20,58 @@ import cs451.Models.MsgType;
  * - No duplication : no message is delivered more than once
  * - No creation : No message is delivered unless it was sent
  */
-public class PerfectLink implements Link {
+public class PerfectLink implements Link, Subscriber<DatagramPacket> {
 
-    UDPHost src;
-    int destPort;
-    InetAddress destAddress;
+    private UDPHost host;
+    private Set<Integer> msgSent;
+    private Subscription subscription;
+    private Logger logger = Logger.getLogger(PerfectLink.class.getName());
+    private StubbornLink stubbornLink;
 
-    public PerfectLink(UDPHost src, int destPort, String ip) {
-        this.src = src;
-        this.destPort = destPort;
-        try {
-            this.destAddress = InetAddress.getByName(ip);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public PerfectLink(UDPHost host) {
+        this.host = host;
+        stubbornLink = new StubbornLink(host);
+        stubbornLink.subscribe(this);
+        msgSent = ConcurrentHashMap.newKeySet();
     }
 
     /* */
     @Override
     public void send(Message m, UDPHost host, InetAddress dest, int port) {
-        /*
-         * byte[] bytes = m.toBytes();
-         * DatagramPacket packet = new DatagramPacket(bytes, bytes.length, destAddress,
-         * destPort);
-         * return src.send(packet);
-         */
+        stubbornLink.send(m, host, dest, port);
+        logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
     }
 
     @Override
     public void deliver(DatagramPacket packet) {
-        /*
-         * DatagramPacket packet = src.receive();
-         * Message msg = Message.fromBytes(packet.getData());
-         * 
-         * switch (msg.getType()) {
-         * case ACK:
-         * break;
-         * case DATA:
-         * Message ackDataMsg = new Message(MsgType.ACK, msg.getSeqNum(), new byte[0]);
-         * send(ackDataMsg, host, packet.getAddress(), packet.getPort());
-         * break;
-         * default:
-         * return null;
-         * }
-         * return packet;
-         */
-
+        Message msg = Message.fromBytes(packet.getData());
+        if (!msgSent.contains(msg.getId())) {
+            logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
+                    + packet.getAddress().getHostAddress() + ":" + packet.getPort());
+            msgSent.add(msg.getId());
+        }
     }
 
-    /*
-     * @Override
-     * public void start() {
-     * Message synMsg = new Message(MsgType.SYN, 0, new byte[0]);
-     * if (send(synMsg)) {
-     * if (receive()) {
-     * System.out.println("Perfect link established between " +
-     * src.getAddress().getHostAddress() + ":"
-     * + src.getPort() + " and " + destAddress.getHostAddress() + ":" + destPort);
-     * }
-     * }
-     * }
-     */
+    @Override
+    public void onSubscribe(Subscription subscription) {
+        this.subscription = subscription;
+        subscription.request(1);
+    }
+
+    @Override
+    public void onNext(DatagramPacket item) {
+        deliver(item);
+        subscription.request(1);
+    }
+
+    @Override
+    public void onError(Throwable throwable) {
+        throwable.printStackTrace();
+    }
+
+    @Override
+    public void onComplete() {
+        logger.log(Level.INFO, "Completed");
+    }
 
 }

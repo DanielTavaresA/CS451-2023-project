@@ -30,6 +30,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
         ackedMessages = ConcurrentHashMap.newKeySet();
         fairLossLink.subscribe(this);
         this.host = host;
+        logger.setLevel(Level.OFF);
     }
 
     @Override
@@ -80,6 +81,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     @Override
     public void onNext(DatagramPacket item) {
         deliver(item);
+        publisher.submit(item);
         subscription.request(1);
 
     }
