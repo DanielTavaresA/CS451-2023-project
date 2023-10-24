@@ -81,11 +81,11 @@ public class Main {
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp());
         myUDPHost.receive();
         /*
-        FairLossLink fairLossLink = new FairLossLink(myUDPHost);
-
-        Thread.sleep(5000);
-
-        /*
+         * FairLossLink fairLossLink = new FairLossLink(myUDPHost);
+         * 
+         * Thread.sleep(5000);
+         * 
+         * /*
          * // Broadcast
          * for (Host host : hosts) {
          * if (host.getId() == parser.myId()) {
@@ -99,33 +99,32 @@ public class Main {
 
         // Send - Recieve Fair Loss
 
-        
-/*
-        for (Host host : hosts) {
-            // if we are the host, send to all other hosts
-            if (host.getId() == parser.myId()) {
-                for (Host dest : hosts) {
-                    if (dest.getId() == parser.myId()) {
-                        continue;
-                    }
-                    InetAddress destAddress;
-                    try {
-                        destAddress = InetAddress.getByName(dest.getIp());
-                    } catch (UnknownHostException e) {
-                        e.printStackTrace();
-                        continue;
-                    }
-                    Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
-                    fairLossLink.send(m, myUDPHost, destAddress, dest.getPort());
-                }
-                continue;
-            } 
-        }
-        Thread.sleep(10000);
-
-        System.out.println("Done Fair loss");
-        
-        */
+        /*
+         * for (Host host : hosts) {
+         * // if we are the host, send to all other hosts
+         * if (host.getId() == parser.myId()) {
+         * for (Host dest : hosts) {
+         * if (dest.getId() == parser.myId()) {
+         * continue;
+         * }
+         * InetAddress destAddress;
+         * try {
+         * destAddress = InetAddress.getByName(dest.getIp());
+         * } catch (UnknownHostException e) {
+         * e.printStackTrace();
+         * continue;
+         * }
+         * Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
+         * fairLossLink.send(m, myUDPHost, destAddress, dest.getPort());
+         * }
+         * continue;
+         * }
+         * }
+         * Thread.sleep(10000);
+         * 
+         * System.out.println("Done Fair loss");
+         * 
+         */
 
         // Send - Recieve StubbornLink
 
@@ -146,6 +145,7 @@ public class Main {
                     }
                     Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
                     stubbornLink.send(m, myUDPHost, destAddress, dest.getPort());
+                    System.out.println("Does not wait");
                 }
                 continue;
             }

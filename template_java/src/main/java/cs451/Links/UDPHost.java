@@ -11,12 +11,15 @@ import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class UDPHost implements Publisher<DatagramPacket>{
+public class UDPHost implements Publisher<DatagramPacket> {
 
     private DatagramSocket socket;
     private final SubmissionPublisher<DatagramPacket> publisher = new SubmissionPublisher<>();
-    
+    private final Logger logger = Logger.getLogger(UDPHost.class.getName());
+
     private AtomicBoolean running = new AtomicBoolean(false);
 
     public UDPHost(int portNbr, String ip) {
@@ -50,7 +53,8 @@ public class UDPHost implements Publisher<DatagramPacket>{
             running.set(false);
             return;
         }
-        running.set(true);;
+        running.set(true);
+        logger.setLevel(Level.OFF);
     }
 
     /**
@@ -61,7 +65,7 @@ public class UDPHost implements Publisher<DatagramPacket>{
      */
     public CompletableFuture<Boolean> send(DatagramPacket packet) {
         return CompletableFuture.supplyAsync(() -> {
-            System.out.println(
+            logger.log(Level.INFO,
                     "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
                             + " with length "
                             + packet.getLength() + " and hashcode " + packet.hashCode());
@@ -83,21 +87,21 @@ public class UDPHost implements Publisher<DatagramPacket>{
      */
     public CompletableFuture<Boolean> receive() {
         return CompletableFuture.supplyAsync(() -> {
-            while(running.get()){
+            while (running.get()) {
                 byte[] buf = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
-            try {
-                socket.receive(packet);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-            System.out.println(
-                    "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
-                            + " with length "
-                            + packet.getLength() + " and hashcode " + packet.hashCode());
-            publisher.submit(packet);
-                
+                try {
+                    socket.receive(packet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return false;
+                }
+                logger.log(Level.INFO,
+                        "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
+                                + " with length "
+                                + packet.getLength() + " and hashcode " + packet.hashCode());
+                publisher.submit(packet);
+
             }
             return true;
         });
