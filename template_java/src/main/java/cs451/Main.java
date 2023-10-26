@@ -17,6 +17,7 @@ import cs451.Models.Message;
 import cs451.Models.MsgType;
 import cs451.Parser.Host;
 import cs451.Parser.Parser;
+import cs451.utils.Applications;
 
 public class Main {
 
@@ -72,14 +73,13 @@ public class Main {
 
         System.out.println("Broadcasting and delivering messages...\n");
 
+        Applications.runPerfectLinks(parser);
+
         // After a process finishes broadcasting,
         // it waits forever for the delivery of messages.
 
         // Initiates a UDPHost on the port and IP of the current host
-        List<Host> hosts = parser.hosts();
-        Host myHost = hosts.get(parser.myId() - 1);
-        UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp());
-        myUDPHost.receive();
+
         /*
          * FairLossLink fairLossLink = new FairLossLink(myUDPHost);
          * 
@@ -127,32 +127,33 @@ public class Main {
          */
 
         // Send - Recieve StubbornLink
-
-        PerfectLink perfLink = new PerfectLink(myUDPHost);
-        for (Host host : hosts) {
-            // if we are the host, send to all other hosts
-            if (host.getId() == parser.myId()) {
-                for (Host dest : hosts) {
-                    if (dest.getId() == parser.myId()) {
-                        continue;
-                    }
-                    InetAddress destAddress;
-                    try {
-                        destAddress = InetAddress.getByName(dest.getIp());
-                    } catch (UnknownHostException e) {
-                        e.printStackTrace();
-                        continue;
-                    }
-                    Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
-                    perfLink.send(m, myUDPHost, destAddress, dest.getPort());
-                    System.out.println("Does not wait");
-                }
-                continue;
-            }
-        }
-
-        System.out.println("Done Stubborn");
-        System.out.println("Done, go sleep for 1 hour");
+        /*
+         * PerfectLink perfLink = new PerfectLink(myUDPHost);
+         * for (Host host : hosts) {
+         * // if we are the host, send to all other hosts
+         * if (host.getId() == parser.myId()) {
+         * for (Host dest : hosts) {
+         * if (dest.getId() == parser.myId()) {
+         * continue;
+         * }
+         * InetAddress destAddress;
+         * try {
+         * destAddress = InetAddress.getByName(dest.getIp());
+         * } catch (UnknownHostException e) {
+         * e.printStackTrace();
+         * continue;
+         * }
+         * Message m = new Message(MsgType.DATA, 0, "Hello World".getBytes());
+         * perfLink.send(m, myUDPHost, destAddress, dest.getPort());
+         * System.out.println("Does not wait");
+         * }
+         * continue;
+         * }
+         * }
+         * 
+         * System.out.println("Done Stubborn");
+         * System.out.println("Done, go sleep for 1 hour");
+         */
 
         while (true) {
             // Sleep for 1 hour

@@ -2,7 +2,6 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
@@ -10,7 +9,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import cs451.Models.Message;
-import cs451.Models.MsgType;
+import cs451.utils.Log;
 
 /**
  * Class implementing a perfect link.
@@ -22,33 +21,39 @@ import cs451.Models.MsgType;
  */
 public class PerfectLink implements Link, Subscriber<DatagramPacket> {
 
-    private UDPHost host;
-    private Set<Integer> msgSent;
     private Subscription subscription;
     private Logger logger = Logger.getLogger(PerfectLink.class.getName());
     private StubbornLink stubbornLink;
+    private ConcurrentHashMap<Integer, Message> sent;
+    private ConcurrentHashMap<Integer, Message> delivered;
 
     public PerfectLink(UDPHost host) {
-        this.host = host;
         stubbornLink = new StubbornLink(host);
         stubbornLink.subscribe(this);
-        msgSent = ConcurrentHashMap.newKeySet();
+        sent = new ConcurrentHashMap<Integer, Message>();
+        delivered = new ConcurrentHashMap<Integer, Message>();
     }
 
     /* */
     @Override
     public void send(Message m, UDPHost host, InetAddress dest, int port) {
         stubbornLink.send(m, host, dest, port);
+        sent.put(m.getId(), m);
         logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
+        String log = "b " + m.getSenderId() + "\n";
+        Log.logFile(log);
     }
 
     @Override
     public void deliver(DatagramPacket packet) {
         Message msg = Message.fromBytes(packet.getData());
-        if (!msgSent.contains(msg.getId())) {
+        int ackedId = Message.getAckedId(msg);
+        if (!delivered.contains(ackedId)) {
             logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
                     + packet.getAddress().getHostAddress() + ":" + packet.getPort());
-            msgSent.add(msg.getId());
+            delivered.put(ackedId, msg);
+            String log = "d " + msg.getSenderId() + " " + msg.getData().toString() + "\n";
+            Log.logFile(log);
         }
     }
 

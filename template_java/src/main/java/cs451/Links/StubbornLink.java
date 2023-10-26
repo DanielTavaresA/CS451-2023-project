@@ -23,7 +23,6 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     private UDPHost host;
     private final Logger logger = Logger.getLogger(StubbornLink.class.getName());
     private final SubmissionPublisher<DatagramPacket> publisher = new SubmissionPublisher<>();
-    // private final Duration timeout = Duration.ofSeconds(1);
 
     public StubbornLink(UDPHost host) {
         fairLossLink = new FairLossLink(host);
@@ -41,9 +40,8 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                         "[SBL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
                 fairLossLink.send(m, host, dest, port);
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(5000);
                 } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }
@@ -59,11 +57,16 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
 
         switch (msg.getType()) {
             case ACK:
-                ackedMessages.add(msg.getId());
-                logger.log(Level.INFO, "[SBL] - Received ACK for message : " + msg.getId());
+                int ackedId = Message.getAckedId(msg);
+                if (!ackedMessages.contains(ackedId)) {
+                    ackedMessages.add(ackedId);
+                    publisher.submit(packet);
+                    logger.log(Level.INFO, "[SBL] - Received ACK for message : " + ackedId);
+                }
                 break;
             case DATA:
-                Message ack = new Message(MsgType.ACK, 0, msg.getId(), new byte[0]);
+                Message ack = new Message(MsgType.ACK, 1, Message.ackPayload(msg));
+                System.out.println("Sending ack : " + ack.toString());
                 fairLossLink.send(ack, host, packet.getAddress(), packet.getPort());
                 break;
             default:
@@ -81,7 +84,6 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     @Override
     public void onNext(DatagramPacket item) {
         deliver(item);
-        publisher.submit(item);
         subscription.request(1);
 
     }
