@@ -37,8 +37,8 @@ public class Applications {
 
         if (parser.myId() != recieverId) {
             for (int i = 0; i < nbMsg; i++) {
-                byte[] data = new byte[] { Integer.valueOf(i).byteValue() };
-                Message msg = new Message(MsgType.DATA, parser.myId(), data);
+                byte[] data = Integer.toString(i).getBytes();
+                Message msg = new Message(MsgType.DATA, parser.myId(), recieverId, data);
                 try {
                     InetAddress recieverIp = InetAddress.getByName(recieverHost.getIp());
                     perfectLink.send(msg, myUDPHost, recieverIp, recieverHost.getPort());

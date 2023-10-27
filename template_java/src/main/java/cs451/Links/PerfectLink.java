@@ -40,21 +40,19 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
         stubbornLink.send(m, host, dest, port);
         sent.put(m.getId(), m);
         logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
-        String log = "b " + m.getSenderId() + "\n";
+        String log = "b " + new String(m.getData()) + "\n";
         Log.logFile(log);
     }
 
     @Override
     public void deliver(DatagramPacket packet) {
         Message msg = Message.fromBytes(packet.getData());
-        int ackedId = Message.getAckedId(msg);
-        if (!delivered.contains(ackedId)) {
-            logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
-                    + packet.getAddress().getHostAddress() + ":" + packet.getPort());
-            delivered.put(ackedId, msg);
-            String log = "d " + msg.getSenderId() + " " + msg.getData().toString() + "\n";
-            Log.logFile(log);
-        }
+        int ackedId = msg.getAckedId();
+        logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
+                + packet.getAddress().getHostAddress() + ":" + packet.getPort());
+        delivered.put(ackedId, msg);
+        String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).strip() + "\n";
+        Log.logFile(log);
     }
 
     @Override

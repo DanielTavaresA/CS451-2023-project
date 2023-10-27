@@ -18,7 +18,8 @@ import cs451.Models.MsgType;
 public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
     private FairLossLink fairLossLink;
-    private Set<Integer> ackedMessages;
+    private ConcurrentHashMap<Integer, Message> delivered;
+    private Set<Integer> acked;
     private Subscription subscription;
     private UDPHost host;
     private final Logger logger = Logger.getLogger(StubbornLink.class.getName());
@@ -26,7 +27,8 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
 
     public StubbornLink(UDPHost host) {
         fairLossLink = new FairLossLink(host);
-        ackedMessages = ConcurrentHashMap.newKeySet();
+        delivered = new ConcurrentHashMap<Integer, Message>();
+        acked = ConcurrentHashMap.newKeySet();
         fairLossLink.subscribe(this);
         this.host = host;
         logger.setLevel(Level.OFF);
@@ -35,7 +37,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     @Override
     public void send(Message m, UDPHost host, InetAddress dest, int port) {
         CompletableFuture.runAsync(() -> {
-            while (!ackedMessages.contains(m.getId())) {
+            while (!acked.contains(m.getId())) {
                 logger.log(Level.INFO,
                         "[SBL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
                 fairLossLink.send(m, host, dest, port);
@@ -56,18 +58,24 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                 + packet.getAddress().getHostAddress() + ":" + packet.getPort());
 
         switch (msg.getType()) {
+            // sender side
             case ACK:
-                int ackedId = Message.getAckedId(msg);
-                if (!ackedMessages.contains(ackedId)) {
-                    ackedMessages.add(ackedId);
-                    publisher.submit(packet);
+                int ackedId = msg.getAckedId();
+                if (!acked.contains(ackedId)) {
+                    acked.add(ackedId);
                     logger.log(Level.INFO, "[SBL] - Received ACK for message : " + ackedId);
                 }
                 break;
+            // reciever side
             case DATA:
-                Message ack = new Message(MsgType.ACK, 1, Message.ackPayload(msg));
-                System.out.println("Sending ack : " + ack.toString());
-                fairLossLink.send(ack, host, packet.getAddress(), packet.getPort());
+                if (!delivered.contains(msg.getId())) {
+                    delivered.put(msg.getId(), msg);
+                    publisher.submit(packet);
+                    logger.log(Level.INFO, "[SBL] - Received  : " + msg.getId());
+                    Message ack = new Message(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(), msg.ackPayload());
+                    fairLossLink.send(ack, host, packet.getAddress(), packet.getPort());
+                }
+
                 break;
             default:
                 break;
