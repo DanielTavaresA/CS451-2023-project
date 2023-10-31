@@ -3,6 +3,8 @@ package cs451.Links;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 import java.util.logging.Level;
@@ -26,21 +28,24 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
     private StubbornLink stubbornLink;
     private ConcurrentHashMap<Integer, Message> sent;
     private ConcurrentHashMap<Integer, Message> delivered;
+    private ExecutorService executor;
 
-    public PerfectLink(UDPHost host) {
-        stubbornLink = new StubbornLink(host);
+    public PerfectLink(UDPHost host, ExecutorService executor) {
+        stubbornLink = new StubbornLink(host, executor);
         stubbornLink.subscribe(this);
         sent = new ConcurrentHashMap<Integer, Message>();
         delivered = new ConcurrentHashMap<Integer, Message>();
+        this.executor = executor;
+        logger.setLevel(Level.OFF);
     }
 
     /* */
     @Override
     public void send(Message m, UDPHost host, InetAddress dest, int port) {
-        stubbornLink.send(m, host, dest, port);
+        executor.submit(() -> stubbornLink.send(m, host, dest, port));
         sent.put(m.getId(), m);
         logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
-        String log = "b " + new String(m.getData()) + "\n";
+        String log = "b " + new String(m.getData()).trim() + "\n";
         Log.logFile(log);
     }
 
@@ -51,7 +56,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
         logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
                 + packet.getAddress().getHostAddress() + ":" + packet.getPort());
         delivered.put(ackedId, msg);
-        String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).strip() + "\n";
+        String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).trim() + "\n";
         Log.logFile(log);
     }
 

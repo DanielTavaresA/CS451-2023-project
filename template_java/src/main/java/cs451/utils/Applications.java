@@ -1,13 +1,12 @@
 package cs451.utils;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
@@ -22,7 +21,8 @@ public class Applications {
         List<Host> hosts = parser.hosts();
 
         Host myHost = hosts.get(parser.myId() - 1);
-        UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp());
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp(), executor);
         myUDPHost.receive();
 
         int[] config = readConfigFile(parser.config());
@@ -33,10 +33,10 @@ public class Applications {
         int recieverId = config[1];
         Host recieverHost = hosts.get(recieverId - 1);
 
-        PerfectLink perfectLink = new PerfectLink(myUDPHost);
+        PerfectLink perfectLink = new PerfectLink(myUDPHost, executor);
 
         if (parser.myId() != recieverId) {
-            for (int i = 0; i < nbMsg; i++) {
+            for (int i = 1; i <= nbMsg; i++) {
                 byte[] data = Integer.toString(i).getBytes();
                 Message msg = new Message(MsgType.DATA, parser.myId(), recieverId, data);
                 try {

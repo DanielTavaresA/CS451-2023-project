@@ -6,7 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -17,12 +17,14 @@ import java.util.logging.Logger;
 public class UDPHost implements Publisher<DatagramPacket> {
 
     private DatagramSocket socket;
-    private final SubmissionPublisher<DatagramPacket> publisher = new SubmissionPublisher<>();
+    private SubmissionPublisher<DatagramPacket> publisher;
     private final Logger logger = Logger.getLogger(UDPHost.class.getName());
 
     private AtomicBoolean running = new AtomicBoolean(false);
 
-    public UDPHost(int portNbr, String ip) {
+    private ExecutorService executor;
+
+    public UDPHost(int portNbr, String ip, ExecutorService executor) {
         if (portNbr < 0 || portNbr > 65535) {
             System.err.println("Port number must be between 0 and 65535!");
             return;
@@ -53,6 +55,8 @@ public class UDPHost implements Publisher<DatagramPacket> {
             running.set(false);
             return;
         }
+        this.executor = executor;
+        publisher = new SubmissionPublisher<>(executor, 256);
         running.set(true);
         logger.setLevel(Level.OFF);
     }
@@ -63,20 +67,18 @@ public class UDPHost implements Publisher<DatagramPacket> {
      * @param packet DatagramPacket to send.
      * @return true if the packet was sent successfully, false otherwise.
      */
-    public CompletableFuture<Boolean> send(DatagramPacket packet) {
-        return CompletableFuture.supplyAsync(() -> {
-            logger.log(Level.INFO,
-                    "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
-                            + " with length "
-                            + packet.getLength() + " and hashcode " + packet.hashCode());
-            try {
-                socket.send(packet);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
-            }
-            return true;
-        });
+    public void send(DatagramPacket packet) {
+        logger.log(Level.INFO,
+                "Sending packet to " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
+                        + " with length "
+                        + packet.getLength() + " and hashcode " + packet.hashCode());
+        try {
+            socket.send(packet);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        return;
     }
 
     /**
@@ -85,8 +87,8 @@ public class UDPHost implements Publisher<DatagramPacket> {
      * @return DatagramPacket received from the host. Returns false if an error
      *         occurs.
      */
-    public CompletableFuture<Boolean> receive() {
-        return CompletableFuture.supplyAsync(() -> {
+    public void receive() {
+        executor.submit(() -> {
             while (running.get()) {
                 byte[] buf = new byte[1024];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -94,7 +96,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
                     socket.receive(packet);
                 } catch (IOException e) {
                     e.printStackTrace();
-                    return false;
+                    return;
                 }
                 logger.log(Level.INFO,
                         "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
@@ -103,7 +105,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
                 publisher.submit(packet);
 
             }
-            return true;
+            return;
         });
 
     }

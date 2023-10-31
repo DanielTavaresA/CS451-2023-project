@@ -2,6 +2,7 @@ package cs451.Models;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.UUID;
 
 public class Message implements Serializable {
 
@@ -21,7 +22,7 @@ public class Message implements Serializable {
         this.senderId = senderId;
         this.recieverId = recieverId;
         this.data = data;
-        id = this.hashCode();
+        id = UUID.randomUUID().hashCode();
     }
 
     private Message(MsgType type, int id, int senderId, int recieverId, byte[] data) {

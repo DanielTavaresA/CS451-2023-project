@@ -2,6 +2,7 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
@@ -21,12 +22,15 @@ import cs451.Models.Message;
 public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
     private Subscription subscription;
+    private ExecutorService executor;
     private final Logger logger = Logger.getLogger(FairLossLink.class.getName());
-    private final SubmissionPublisher<DatagramPacket> publisher = new SubmissionPublisher<>();
+    private final SubmissionPublisher<DatagramPacket> publisher;
 
-    public FairLossLink(UDPHost host) {
+    public FairLossLink(UDPHost host, ExecutorService executor) {
         host.subscribe(this);
         logger.setLevel(Level.OFF);
+        this.executor = executor;
+        publisher = new SubmissionPublisher<>(executor, 256);
 
     }
 
