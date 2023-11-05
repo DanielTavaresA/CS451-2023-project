@@ -22,18 +22,32 @@ import cs451.Models.Message;
 public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
     private Subscription subscription;
-    private ExecutorService executor;
     private final Logger logger = Logger.getLogger(FairLossLink.class.getName());
     private final SubmissionPublisher<DatagramPacket> publisher;
 
+    /**
+     * Constructor for the FairLossLink class.
+     * Subscribes the host to this class and sets the logger level to OFF.
+     * Initializes the executor and publisher for the class.
+     *
+     * @param host     The UDPHost object to be subscribed to this class.
+     * @param executor The ExecutorService object to be initialized for this class.
+     */
     public FairLossLink(UDPHost host, ExecutorService executor) {
         host.subscribe(this);
         logger.setLevel(Level.OFF);
-        this.executor = executor;
         publisher = new SubmissionPublisher<>(executor, 256);
 
     }
 
+    /**
+     * Sends a message to a destination address and port using UDP protocol.
+     * 
+     * @param m    the message to be sent
+     * @param host the UDP host used to send the message
+     * @param dest the destination address of the message
+     * @param port the destination port of the message
+     */
     @Override
     public void send(Message m, UDPHost host, InetAddress dest, int port) {
         DatagramPacket packet = new DatagramPacket(m.toBytes(), m.toBytes().length, dest, port);
@@ -42,6 +56,12 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
 
     }
 
+    /**
+     * This method is used to deliver a message received through a DatagramPacket.
+     * It logs the message ID and the sender's IP address and port.
+     *
+     * @param packet the DatagramPacket containing the message to be delivered
+     */
     @Override
     public void deliver(DatagramPacket packet) {
         Message msg = Message.fromBytes(packet.getData());

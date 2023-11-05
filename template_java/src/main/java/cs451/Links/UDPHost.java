@@ -14,8 +14,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Class representing a host in the network.
+ */
 public class UDPHost implements Publisher<DatagramPacket> {
 
+    private static final int MAX_PKT_SIZE = 1024;
     private DatagramSocket socket;
     private SubmissionPublisher<DatagramPacket> publisher;
     private final Logger logger = Logger.getLogger(UDPHost.class.getName());
@@ -24,6 +28,13 @@ public class UDPHost implements Publisher<DatagramPacket> {
 
     private ExecutorService executor;
 
+    /**
+     * Creates a host with a given port number and IP address.
+     * 
+     * @param portNbr  Port number of the host.
+     * @param ip       IP address of the host.
+     * @param executor ExecutorService to run threads.
+     */
     public UDPHost(int portNbr, String ip, ExecutorService executor) {
         if (portNbr < 0 || portNbr > 65535) {
             System.err.println("Port number must be between 0 and 65535!");
@@ -65,7 +76,6 @@ public class UDPHost implements Publisher<DatagramPacket> {
      * Sends a packet to the host.
      * 
      * @param packet DatagramPacket to send.
-     * @return true if the packet was sent successfully, false otherwise.
      */
     public void send(DatagramPacket packet) {
         logger.log(Level.INFO,
@@ -82,15 +92,12 @@ public class UDPHost implements Publisher<DatagramPacket> {
     }
 
     /**
-     * Receives a packet from the host.
-     * 
-     * @return DatagramPacket received from the host. Returns false if an error
-     *         occurs.
+     * Receives packets from the host.
      */
     public void receive() {
         executor.submit(() -> {
             while (running.get()) {
-                byte[] buf = new byte[1024];
+                byte[] buf = new byte[MAX_PKT_SIZE];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 try {
                     socket.receive(packet);
@@ -110,19 +117,35 @@ public class UDPHost implements Publisher<DatagramPacket> {
 
     }
 
+    /**
+     * Stops the host.
+     */
     public void stop() {
         running.set(false);
         socket.close();
     }
 
+    /**
+     * Returns the port number of the host.
+     * 
+     * @return Port number of the host.
+     */
     public int getPort() {
         return socket.getLocalPort();
     }
 
+    /**
+     * Returns the IP address of the host.
+     * 
+     * @return IP address of the host.
+     */
     public InetAddress getAddress() {
         return socket.getLocalAddress();
     }
 
+    /**
+     * Subscribes a subscriber to the publisher.
+     */
     @Override
     public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
         publisher.subscribe(subscriber);

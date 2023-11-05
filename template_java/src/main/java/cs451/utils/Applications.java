@@ -15,8 +15,18 @@ import cs451.Models.MsgType;
 import cs451.Parser.Host;
 import cs451.Parser.Parser;
 
+/**
+ * This class contains methods to run different applications for the distributed
+ * algorithm.
+ */
 public class Applications {
 
+    /**
+     * Runs the Perfect Link protocol.
+     * 
+     * @param parser the parser object containing the necessary information for the
+     *               protocol
+     */
     public static void runPerfectLinks(Parser parser) {
         List<Host> hosts = parser.hosts();
 
@@ -25,7 +35,7 @@ public class Applications {
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp(), executor);
         myUDPHost.receive();
 
-        int[] config = readConfigFile(parser.config());
+        int[] config = readPerfectConfigFile(parser.config());
 
         Log.logPath = Paths.get(parser.output());
 
@@ -52,7 +62,18 @@ public class Applications {
 
     }
 
-    private static int[] readConfigFile(String path) {
+    /**
+     * Reads the configuration file at the given path and returns an array
+     * containing the values of m and i.
+     * The configuration file should have two space-separated integers on the first
+     * line, representing m and i respectively.
+     * If the file cannot be read or parsed, null is returned.
+     *
+     * @param path the path to the configuration file
+     * @return an array containing the values of m and i, or null if the file cannot
+     *         be read or parsed
+     */
+    private static int[] readPerfectConfigFile(String path) {
         try {
             String content = Files.readString(Paths.get(path));
             String[] entries = content.strip().split(" ");

@@ -3,7 +3,6 @@ package cs451.Links;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
@@ -30,16 +29,31 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
     private ConcurrentHashMap<Integer, Message> delivered;
     private ExecutorService executor;
 
+    /**
+     * Constructor for the PerfectLink class.
+     * Initializes a StubbornLink object, subscribes to it, and initializes
+     * ConcurrentHashMaps for sent and delivered messages.
+     * 
+     * @param host     the UDPHost object to use for communication
+     * @param executor the ExecutorService object to use for running threads
+     */
     public PerfectLink(UDPHost host, ExecutorService executor) {
         stubbornLink = new StubbornLink(host, executor);
         stubbornLink.subscribe(this);
         sent = new ConcurrentHashMap<Integer, Message>();
         delivered = new ConcurrentHashMap<Integer, Message>();
         this.executor = executor;
-        logger.setLevel(Level.OFF);
+        logger.setLevel(Level.INFO);
     }
 
-    /* */
+    /**
+     * Sends a message using the Perfect Link protocol.
+     * 
+     * @param m    the message to be sent
+     * @param host the UDP host used to send the message
+     * @param dest the destination IP address of the message
+     * @param port the destination port of the message
+     */
     @Override
     public void send(Message m, UDPHost host, InetAddress dest, int port) {
         executor.submit(() -> stubbornLink.send(m, host, dest, port));
@@ -49,12 +63,23 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
         Log.logFile(log);
     }
 
+    /**
+     * This method delivers a message by deserializing the data from the given
+     * DatagramPacket,
+     * storing it in the delivered HashMap with the corresponding ackedId as the
+     * key,
+     * and logging the delivery in the log file.
+     * 
+     * @param packet the DatagramPacket containing the serialized message to be
+     *               delivered
+     */
     @Override
     public void deliver(DatagramPacket packet) {
         Message msg = Message.fromBytes(packet.getData());
         int ackedId = msg.getAckedId();
         logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
-                + packet.getAddress().getHostAddress() + ":" + packet.getPort());
+                + packet.getAddress().getHostAddress() + ":" + packet.getPort() + "at time : "
+                + System.currentTimeMillis());
         delivered.put(ackedId, msg);
         String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).trim() + "\n";
         Log.logFile(log);

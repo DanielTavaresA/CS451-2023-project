@@ -9,6 +9,11 @@ public class Log {
 
     public static Path logPath;
 
+    /**
+     * Appends the given log message to the log file.
+     * 
+     * @param log the log message to be appended to the log file
+     */
     public static void logFile(String log) {
         try {
             Files.write(logPath, log.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
