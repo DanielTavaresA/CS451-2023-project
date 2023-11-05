@@ -43,7 +43,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
         sent = new ConcurrentHashMap<Integer, Message>();
         delivered = new ConcurrentHashMap<Integer, Message>();
         this.executor = executor;
-        logger.setLevel(Level.INFO);
+        logger.setLevel(Level.OFF);
     }
 
     /**

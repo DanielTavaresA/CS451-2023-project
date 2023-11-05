@@ -29,8 +29,8 @@ import cs451.Models.MsgType;
  */
 public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
-    private static final long TIME_PERIOD = 2;
-    private static final TimeUnit TIME_UNIT = TimeUnit.SECONDS;
+    private static final long TIME_PERIOD = 500;
+    private static final TimeUnit TIME_UNIT = TimeUnit.MILLISECONDS;
     private FairLossLink fairLossLink;
     private ConcurrentHashMap<Integer, Message> delivered;
     private ConcurrentHashMap<Integer, ScheduledFuture<?>> waitForAck;
@@ -115,8 +115,8 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
             // sender side
             case ACK:
                 int ackedId = msg.getAckedId();
-                logger.log(Level.INFO, "[SBL] - Received ACK for message : " + ackedId);
                 if (!acked.contains(ackedId)) {
+                    logger.log(Level.INFO, "[SBL] - Received ACK for message : " + ackedId);
                     acked.add(ackedId);
                     logger.log(Level.INFO, "[SBL] - Added ACK : " + ackedId);
                 }
@@ -131,7 +131,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
 
                     Message ack = new Message(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(),
                             msg.ackPayload());
-                    send(ack, host, packet.getAddress(), packet.getPort());
+                    fairLossLink.send(ack, host, packet.getAddress(), packet.getPort());
                     publisher.submit(packet);
                 }
 
