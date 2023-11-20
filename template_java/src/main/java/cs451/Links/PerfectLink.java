@@ -30,7 +30,6 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     private ConcurrentHashMap<Integer, Message> sent;
     private ConcurrentHashMap<Integer, Message> delivered;
     private ExecutorService executor;
-    private UDPHost host;
     private Publisher<DatagramPacket> publisher;
 
     /**
@@ -44,7 +43,6 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     public PerfectLink(UDPHost host, ExecutorService executor) {
         stubbornLink = new StubbornLink(host, executor);
         stubbornLink.subscribe(this);
-        this.host = host;
         sent = new ConcurrentHashMap<Integer, Message>();
         delivered = new ConcurrentHashMap<Integer, Message>();
         this.executor = executor;

@@ -41,7 +41,7 @@ public class Applications {
         ExecutorService executor = Executors.newFixedThreadPool(8);
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp(), executor);
         myUDPHost.receive();
-        IPAddress myAddress = new IPAddress(myUDPHost.getAddress(), myUDPHost.getPort());
+        IPAddress myAddress = myUDPHost.getAddress();
 
         int[] config = readPerfectConfigFile(parser.config());
 

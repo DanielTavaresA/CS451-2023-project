@@ -37,7 +37,6 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     private ConcurrentHashMap<Integer, ScheduledFuture<?>> waitForAck;
     private Set<Integer> acked;
     private Subscription subscription;
-    private UDPHost host;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final Logger logger = Logger.getLogger(StubbornLink.class.getName());
     private final SubmissionPublisher<DatagramPacket> publisher;
@@ -62,7 +61,6 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
         waitForAck = new ConcurrentHashMap<Integer, ScheduledFuture<?>>();
         acked = ConcurrentHashMap.newKeySet();
         fairLossLink.subscribe(this);
-        this.host = host;
         publisher = new SubmissionPublisher<>(executor, 256);
         logger.setLevel(Level.OFF);
     }

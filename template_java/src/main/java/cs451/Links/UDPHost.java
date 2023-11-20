@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cs451.Models.IPAddress;
+
 /**
  * Class representing a host in the network.
  */
@@ -23,6 +25,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
     private DatagramSocket socket;
     private SubmissionPublisher<DatagramPacket> publisher;
     private final Logger logger = Logger.getLogger(UDPHost.class.getName());
+    private IPAddress ipAddress;
 
     private AtomicBoolean running = new AtomicBoolean(false);
 
@@ -68,6 +71,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
         }
         this.executor = executor;
         publisher = new SubmissionPublisher<>(executor, 256);
+        ipAddress = new IPAddress(address, portNbr);
         running.set(true);
         logger.setLevel(Level.OFF);
     }
@@ -139,8 +143,8 @@ public class UDPHost implements Publisher<DatagramPacket> {
      * 
      * @return IP address of the host.
      */
-    public InetAddress getAddress() {
-        return socket.getLocalAddress();
+    public IPAddress getAddress() {
+        return ipAddress;
     }
 
     /**
