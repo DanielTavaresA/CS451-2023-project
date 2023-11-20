@@ -1,8 +1,8 @@
 package cs451.Links;
 
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 
+import cs451.Models.IPAddress;
 import cs451.Models.Message;
 
 /**
@@ -10,7 +10,7 @@ import cs451.Models.Message;
  */
 public interface Link {
 
-    public abstract void send(Message m, UDPHost host, InetAddress dest, int port);
+    public abstract void send(Message m, IPAddress dest);
 
     public abstract void deliver(DatagramPacket packet);
 

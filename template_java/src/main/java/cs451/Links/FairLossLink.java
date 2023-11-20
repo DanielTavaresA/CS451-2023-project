@@ -1,7 +1,6 @@
 package cs451.Links;
 
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -10,6 +9,7 @@ import java.util.concurrent.SubmissionPublisher;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cs451.Models.IPAddress;
 import cs451.Models.Message;
 
 /*
@@ -24,6 +24,7 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
     private Subscription subscription;
     private final Logger logger = Logger.getLogger(FairLossLink.class.getName());
     private final SubmissionPublisher<DatagramPacket> publisher;
+    private final UDPHost host;
 
     /**
      * Constructor for the FairLossLink class.
@@ -35,6 +36,7 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
      */
     public FairLossLink(UDPHost host, ExecutorService executor) {
         host.subscribe(this);
+        this.host = host;
         logger.setLevel(Level.OFF);
         publisher = new SubmissionPublisher<>(executor, 256);
 
@@ -44,14 +46,12 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
      * Sends a message to a destination address and port using UDP protocol.
      * 
      * @param m    the message to be sent
-     * @param host the UDP host used to send the message
      * @param dest the destination address of the message
-     * @param port the destination port of the message
      */
     @Override
-    public void send(Message m, UDPHost host, InetAddress dest, int port) {
-        DatagramPacket packet = new DatagramPacket(m.toBytes(), m.toBytes().length, dest, port);
-        logger.log(Level.INFO, "[FLL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
+    public void send(Message m, IPAddress dest) {
+        DatagramPacket packet = new DatagramPacket(m.toBytes(), m.toBytes().length, dest.getAddress(), dest.getPort());
+        logger.log(Level.INFO, "[FLL] - Sending message : " + m.getId() + " to " + dest);
         host.send(packet);
 
     }

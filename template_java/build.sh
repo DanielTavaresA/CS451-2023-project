@@ -1,5 +1,7 @@
 #!/bin/bash
 
+chmod -R 777 .
+
 set -e
 
 # Change the current working directory to the location of the present file

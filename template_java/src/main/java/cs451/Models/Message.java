@@ -1,8 +1,12 @@
 package cs451.Models;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.UUID;
 
 /**
  * Represents a message that can be sent between processes in a distributed
@@ -10,16 +14,8 @@ import java.util.UUID;
  */
 public class Message implements Serializable {
 
-    private MsgType type;
-    private int id;
-    private int senderId;
-    private int recieverId;
+    private Metadata metadata;
     private byte[] data;
-
-    private static final int TYPE_INDEX_SIZE = 4;
-    private static final int SENDER_ID_SIZE = 4;
-    private static final int RECIEVER_ID_SIZE = 4;
-    private static final int ID_SIZE = 4;
 
     /**
      * Constructs a new Message object with the given parameters.
@@ -29,30 +25,8 @@ public class Message implements Serializable {
      * @param recieverId the ID of the process that should receive the message
      * @param data       the data to be sent with the message
      */
-    public Message(MsgType type, int senderId, int recieverId, byte[] data) {
-        this.type = type;
-        this.senderId = senderId;
-        this.recieverId = recieverId;
-        this.data = data;
-        id = UUID.randomUUID().hashCode();
-    }
-
-    /**
-     * Represents a message exchanged between processes in the distributed system.
-     * Private method to create a message with a given ID.
-     * 
-     * @param type       the type of the message
-     * @param id         the unique identifier of the message
-     * @param senderId   the identifier of the process that sent the message
-     * @param recieverId the identifier of the process that should receive the
-     *                   message
-     * @param data       the data contained in the message
-     */
-    private Message(MsgType type, int id, int senderId, int recieverId, byte[] data) {
-        this.type = type;
-        this.id = id;
-        this.senderId = senderId;
-        this.recieverId = recieverId;
+    public Message(Metadata metadata, byte[] data) {
+        this.metadata = metadata;
         this.data = data;
     }
 
@@ -62,14 +36,19 @@ public class Message implements Serializable {
      * @return the message as a byte array
      */
     public byte[] toBytes() {
-        int size = TYPE_INDEX_SIZE + SENDER_ID_SIZE + RECIEVER_ID_SIZE + ID_SIZE + data.length;
-        ByteBuffer buffer = ByteBuffer.allocate(size);
-        buffer.putInt(type.ordinal());
-        buffer.putInt(senderId);
-        buffer.putInt(recieverId);
-        buffer.putInt(id);
-        buffer.put(data);
-        return buffer.array();
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream outputStream;
+        try {
+            outputStream = new ObjectOutputStream(bos);
+            outputStream.writeObject(this);
+            outputStream.flush();
+            outputStream.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        byte[] metadataBytes = bos.toByteArray();
+        return metadataBytes;
     }
 
     /**
@@ -79,14 +58,19 @@ public class Message implements Serializable {
      * @return the Message object represented by the byte array
      */
     public static Message fromBytes(byte[] bytes) {
-        ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        MsgType type = MsgType.values()[buffer.getInt()];
-        int senderId = buffer.getInt();
-        int recieverId = buffer.getInt();
-        int id = buffer.getInt();
-        byte[] data = new byte[buffer.remaining()];
-        buffer.get(data);
-        return new Message(type, id, senderId, recieverId, data);
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+        try {
+            ObjectInputStream inputStream = new ObjectInputStream(bis);
+            Message msg = (Message) inputStream.readObject();
+            return msg;
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return null;
+
     }
 
     /**
@@ -95,7 +79,7 @@ public class Message implements Serializable {
      * @return the type of the message
      */
     public MsgType getType() {
-        return type;
+        return metadata.getType();
     }
 
     /**
@@ -113,7 +97,7 @@ public class Message implements Serializable {
      * @return the ID of the message
      */
     public int getId() {
-        return id;
+        return metadata.getId();
     }
 
     /**
@@ -122,7 +106,7 @@ public class Message implements Serializable {
      * @return the ID of the process that sent the message
      */
     public int getSenderId() {
-        return senderId;
+        return metadata.getSenderId();
     }
 
     /**
@@ -131,7 +115,7 @@ public class Message implements Serializable {
      * @return the ID of the process that should receive the message
      */
     public int getRecieverId() {
-        return recieverId;
+        return metadata.getRecieverId();
     }
 
     /**
@@ -146,18 +130,47 @@ public class Message implements Serializable {
     }
 
     /**
+     * Returns the sequence number of the message.
+     *
+     * @return the sequence number of the message
+     */
+    public int getSeqNum() {
+        return metadata.getSeqNum();
+    }
+
+    /**
+     * Returns the address of the process that sent the message.
+     *
+     * @return the address of the process that sent the message
+     */
+    public IPAddress getSenderAddress() {
+        return metadata.getSenderAddress();
+    }
+
+    /**
+     * Returns the address of the process that should receive the message.
+     * 
+     * @return the address of the process that should receive the message
+     */
+    public IPAddress getRecieverAddress() {
+        return metadata.getRecieverAddress();
+    }
+
+    /**
      * Returns the payload of an acknowledgement message for this message.
      *
      * @return the payload of an acknowledgement message for this message
      */
     public byte[] ackPayload() {
-        ByteBuffer buffer = ByteBuffer.allocate(ID_SIZE);
-        buffer.putInt(id);
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        buffer.putInt(getId());
         return buffer.array();
     }
 
     @Override
     public String toString() {
-        return "Message [data=" + new String(data) + ", type=" + type + ", id=" + id + "]";
+        return "Message [data=" + new String(data) + ", type=" + getType() + ", id=" + getId() + ", senderId="
+                + getSenderId() + ", recieverId=" + getRecieverId() + ", seqNum=" + getSeqNum() + ", senderAddress="
+                + getSenderAddress() + ", recieverAddress=" + getRecieverAddress() + "]";
     }
 }

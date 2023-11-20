@@ -1,5 +1,10 @@
 package cs451.utils;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
@@ -10,7 +15,9 @@ import java.util.concurrent.Executors;
 
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
+import cs451.Models.IPAddress;
 import cs451.Models.Message;
+import cs451.Models.Metadata;
 import cs451.Models.MsgType;
 import cs451.Parser.Host;
 import cs451.Parser.Parser;
@@ -34,6 +41,7 @@ public class Applications {
         ExecutorService executor = Executors.newFixedThreadPool(8);
         UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp(), executor);
         myUDPHost.receive();
+        IPAddress myAddress = new IPAddress(myUDPHost.getAddress(), myUDPHost.getPort());
 
         int[] config = readPerfectConfigFile(parser.config());
 
@@ -48,15 +56,18 @@ public class Applications {
         if (parser.myId() != recieverId) {
             for (int i = 1; i <= nbMsg; i++) {
                 byte[] data = Integer.toString(i).getBytes();
-                Message msg = new Message(MsgType.DATA, parser.myId(), recieverId, data);
+
                 try {
                     InetAddress recieverIp = InetAddress.getByName(recieverHost.getIp());
-                    perfectLink.send(msg, myUDPHost, recieverIp, recieverHost.getPort());
+                    IPAddress recieverAddress = new IPAddress(recieverIp, recieverHost.getPort());
+                    Metadata metadata = new Metadata(MsgType.DATA, parser.myId(), recieverId, 0, myAddress,
+                            recieverAddress);
+                    Message msg = new Message(metadata, data);
+                    perfectLink.send(msg, recieverAddress);
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
                     continue;
                 }
-
             }
         }
 

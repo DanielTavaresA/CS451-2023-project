@@ -1,14 +1,16 @@
 package cs451.Links;
 
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cs451.Models.IPAddress;
 import cs451.Models.Message;
 import cs451.utils.Log;
 
@@ -20,7 +22,7 @@ import cs451.utils.Log;
  * - No duplication : no message is delivered more than once
  * - No creation : No message is delivered unless it was sent
  */
-public class PerfectLink implements Link, Subscriber<DatagramPacket> {
+public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
     private Subscription subscription;
     private Logger logger = Logger.getLogger(PerfectLink.class.getName());
@@ -28,6 +30,8 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
     private ConcurrentHashMap<Integer, Message> sent;
     private ConcurrentHashMap<Integer, Message> delivered;
     private ExecutorService executor;
+    private UDPHost host;
+    private Publisher<DatagramPacket> publisher;
 
     /**
      * Constructor for the PerfectLink class.
@@ -40,9 +44,11 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
     public PerfectLink(UDPHost host, ExecutorService executor) {
         stubbornLink = new StubbornLink(host, executor);
         stubbornLink.subscribe(this);
+        this.host = host;
         sent = new ConcurrentHashMap<Integer, Message>();
         delivered = new ConcurrentHashMap<Integer, Message>();
         this.executor = executor;
+        publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
         logger.setLevel(Level.OFF);
     }
 
@@ -50,15 +56,13 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
      * Sends a message using the Perfect Link protocol.
      * 
      * @param m    the message to be sent
-     * @param host the UDP host used to send the message
      * @param dest the destination IP address of the message
-     * @param port the destination port of the message
      */
     @Override
-    public void send(Message m, UDPHost host, InetAddress dest, int port) {
-        executor.submit(() -> stubbornLink.send(m, host, dest, port));
+    public void send(Message m, IPAddress dest) {
+        executor.submit(() -> stubbornLink.send(m, dest));
         sent.put(m.getId(), m);
-        logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
+        logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest);
         String log = "b " + new String(m.getData()).trim() + "\n";
         Log.logFile(log);
     }
@@ -76,7 +80,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
     @Override
     public void deliver(DatagramPacket packet) {
         Message msg = Message.fromBytes(packet.getData());
-        int ackedId = msg.getAckedId();
+        int ackedId = msg.getId();
         logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
                 + packet.getAddress().getHostAddress() + ":" + packet.getPort() + "at time : "
                 + System.currentTimeMillis());
@@ -105,6 +109,11 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket> {
     @Override
     public void onComplete() {
         logger.log(Level.INFO, "Completed");
+    }
+
+    @Override
+    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+        publisher.subscribe(subscriber);
     }
 
 }

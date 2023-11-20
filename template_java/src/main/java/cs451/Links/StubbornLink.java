@@ -1,7 +1,6 @@
 package cs451.Links;
 
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -16,7 +15,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cs451.Models.IPAddress;
 import cs451.Models.Message;
+import cs451.Models.Metadata;
 import cs451.Models.MsgType;
 
 /**
@@ -74,17 +75,15 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
      * for resending the message.
      * 
      * @param m    the message to be sent
-     * @param host the UDP host
      * @param dest the destination IP address
-     * @param port the destination port number
      */
     @Override
-    public void send(Message m, UDPHost host, InetAddress dest, int port) {
+    public void send(Message m, IPAddress dest) {
         ScheduledFuture<?> task = scheduler.scheduleAtFixedRate(() -> {
             if (!acked.contains(m.getId())) {
                 logger.log(Level.INFO,
-                        "[SBL] - Sending message : " + m.getId() + " to " + dest.getHostAddress() + ":" + port);
-                fairLossLink.send(m, host, dest, port);
+                        "[SBL] - Sending message : " + m.getId() + " to " + dest);
+                fairLossLink.send(m, dest);
             } else {
                 logger.log(Level.INFO, "[SBL] - Message : " + m.getId() + " already acked");
                 waitForAck.get(m.getId()).cancel(true);
@@ -119,6 +118,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                     logger.log(Level.INFO, "[SBL] - Received ACK for message : " + ackedId);
                     acked.add(ackedId);
                     logger.log(Level.INFO, "[SBL] - Added ACK : " + ackedId);
+
                 }
 
                 break;
@@ -129,10 +129,13 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                     logger.log(Level.INFO, "[SBL] - Delivering packet : " + msg.getId() + " from "
                             + packet.getAddress().getHostAddress() + ":" + packet.getPort());
 
-                    Message ack = new Message(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(),
-                            msg.ackPayload());
-                    fairLossLink.send(ack, host, packet.getAddress(), packet.getPort());
+                    Metadata ackMetadata = new Metadata(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(), 0,
+                            msg.getRecieverAddress(),
+                            msg.getSenderAddress());
+                    Message ack = new Message(ackMetadata, msg.ackPayload());
+                    fairLossLink.send(ack, msg.getSenderAddress());
                     publisher.submit(packet);
+
                 }
 
                 break;
