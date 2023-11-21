@@ -143,8 +143,8 @@ public class Message implements Serializable {
      *
      * @return the address of the process that sent the message
      */
-    public IPAddress getSenderAddress() {
-        return metadata.getSenderAddress();
+    public HostIP getSenderHostIP() {
+        return metadata.getSenderHostIP();
     }
 
     /**
@@ -152,8 +152,8 @@ public class Message implements Serializable {
      * 
      * @return the address of the process that should receive the message
      */
-    public IPAddress getRecieverAddress() {
-        return metadata.getRecieverAddress();
+    public HostIP getRecieverHostIP() {
+        return metadata.getRecieverHostIP();
     }
 
     /**
@@ -167,10 +167,16 @@ public class Message implements Serializable {
         return buffer.array();
     }
 
+    public Metadata setMetadata(Metadata metadata) {
+        Metadata oldMetadata = this.metadata;
+        this.metadata = metadata;
+        return oldMetadata;
+    }
+
     @Override
     public String toString() {
         return "Message [data=" + new String(data) + ", type=" + getType() + ", id=" + getId() + ", senderId="
                 + getSenderId() + ", recieverId=" + getRecieverId() + ", seqNum=" + getSeqNum() + ", senderAddress="
-                + getSenderAddress() + ", recieverAddress=" + getRecieverAddress() + "]";
+                + getSenderHostIP() + ", recieverAddress=" + getRecieverHostIP() + "]";
     }
 }

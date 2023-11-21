@@ -2,7 +2,7 @@ package cs451.Links;
 
 import java.net.DatagramPacket;
 
-import cs451.Models.IPAddress;
+import cs451.Models.HostIP;
 import cs451.Models.Message;
 
 /**
@@ -10,7 +10,7 @@ import cs451.Models.Message;
  */
 public interface Link {
 
-    public abstract void send(Message m, IPAddress dest);
+    public abstract void send(Message m, HostIP dest);
 
     public abstract void deliver(DatagramPacket packet);
 

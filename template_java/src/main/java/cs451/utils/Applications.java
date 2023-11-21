@@ -1,21 +1,18 @@
 package cs451.utils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import cs451.Broadcast.BestEffortBroadcast;
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
-import cs451.Models.IPAddress;
+import cs451.Models.HostIP;
 import cs451.Models.Message;
 import cs451.Models.Metadata;
 import cs451.Models.MsgType;
@@ -39,9 +36,9 @@ public class Applications {
 
         Host myHost = hosts.get(parser.myId() - 1);
         ExecutorService executor = Executors.newFixedThreadPool(8);
-        UDPHost myUDPHost = new UDPHost(myHost.getPort(), myHost.getIp(), executor);
+        UDPHost myUDPHost = new UDPHost(myHost, executor);
         myUDPHost.receive();
-        IPAddress myAddress = myUDPHost.getAddress();
+        HostIP myHostIP = myUDPHost.getHostIP();
 
         int[] config = readPerfectConfigFile(parser.config());
 
@@ -56,19 +53,37 @@ public class Applications {
         if (parser.myId() != recieverId) {
             for (int i = 1; i <= nbMsg; i++) {
                 byte[] data = Integer.toString(i).getBytes();
-
-                try {
-                    InetAddress recieverIp = InetAddress.getByName(recieverHost.getIp());
-                    IPAddress recieverAddress = new IPAddress(recieverIp, recieverHost.getPort());
-                    Metadata metadata = new Metadata(MsgType.DATA, parser.myId(), recieverId, 0, myAddress,
-                            recieverAddress);
-                    Message msg = new Message(metadata, data);
-                    perfectLink.send(msg, recieverAddress);
-                } catch (UnknownHostException e) {
-                    e.printStackTrace();
-                    continue;
-                }
+                HostIP recieverIP = new HostIP(recieverHost);
+                Metadata metadata = new Metadata(MsgType.DATA, parser.myId(), recieverId, 0, myHostIP,
+                        recieverIP);
+                Message msg = new Message(metadata, data);
+                perfectLink.send(msg, recieverIP);
             }
+        }
+
+    }
+
+    public static void runFifoBroadcast(Parser parser) {
+        List<Host> hosts = parser.hosts();
+
+        Host myHost = hosts.get(parser.myId() - 1);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        UDPHost myUDPHost = new UDPHost(myHost, executor);
+        myUDPHost.receive();
+        HostIP myAddress = myUDPHost.getHostIP();
+
+        int nbMsg = readFifoConfigFile(parser.config());
+
+        Log.logPath = Paths.get(parser.output());
+
+        Set<HostIP> destinations = HostIP.fromHosts(hosts);
+
+        BestEffortBroadcast beb = new BestEffortBroadcast(myUDPHost, destinations, executor);
+        for (int i = 1; i <= nbMsg; i++) {
+            byte[] data = Integer.toString(i).getBytes();
+            Metadata metadata = new Metadata(MsgType.DATA, parser.myId(), 0, 0, myAddress, null);
+            Message msg = new Message(metadata, data);
+            beb.broadcast(msg);
         }
 
     }
@@ -96,6 +111,19 @@ public class Applications {
             e.printStackTrace();
         }
         return null;
+
+    }
+
+    private static int readFifoConfigFile(String path) {
+        try {
+            String content = Files.readString(Paths.get(path));
+            String[] entries = content.strip().split(" ");
+            int m = Integer.parseInt(entries[0]);
+            return m;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
 
     }
 

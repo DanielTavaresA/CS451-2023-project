@@ -10,7 +10,7 @@ import java.util.concurrent.Flow.Subscription;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import cs451.Models.IPAddress;
+import cs451.Models.HostIP;
 import cs451.Models.Message;
 import cs451.utils.Log;
 
@@ -57,7 +57,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
      * @param dest the destination IP address of the message
      */
     @Override
-    public void send(Message m, IPAddress dest) {
+    public void send(Message m, HostIP dest) {
         executor.submit(() -> stubbornLink.send(m, dest));
         sent.put(m.getId(), m);
         logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest);
@@ -80,8 +80,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         Message msg = Message.fromBytes(packet.getData());
         int ackedId = msg.getId();
         logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
-                + packet.getAddress().getHostAddress() + ":" + packet.getPort() + "at time : "
-                + System.currentTimeMillis());
+                + packet.getAddress().getHostAddress() + ":" + packet.getPort());
         delivered.put(ackedId, msg);
         String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).trim() + "\n";
         Log.logFile(log);

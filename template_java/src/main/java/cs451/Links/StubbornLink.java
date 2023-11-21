@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import cs451.Models.IPAddress;
+import cs451.Models.HostIP;
 import cs451.Models.Message;
 import cs451.Models.Metadata;
 import cs451.Models.MsgType;
@@ -30,7 +30,7 @@ import cs451.Models.MsgType;
  */
 public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
-    private static final long TIME_PERIOD = 500;
+    private static final long TIME_PERIOD = 5000;
     private static final TimeUnit TIME_UNIT = TimeUnit.MILLISECONDS;
     private FairLossLink fairLossLink;
     private ConcurrentHashMap<Integer, Message> delivered;
@@ -62,7 +62,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
         acked = ConcurrentHashMap.newKeySet();
         fairLossLink.subscribe(this);
         publisher = new SubmissionPublisher<>(executor, 256);
-        logger.setLevel(Level.OFF);
+        logger.setLevel(Level.INFO);
     }
 
     /**
@@ -76,7 +76,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
      * @param dest the destination IP address
      */
     @Override
-    public void send(Message m, IPAddress dest) {
+    public void send(Message m, HostIP dest) {
         ScheduledFuture<?> task = scheduler.scheduleAtFixedRate(() -> {
             if (!acked.contains(m.getId())) {
                 logger.log(Level.INFO,
@@ -128,10 +128,10 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                             + packet.getAddress().getHostAddress() + ":" + packet.getPort());
 
                     Metadata ackMetadata = new Metadata(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(), 0,
-                            msg.getRecieverAddress(),
-                            msg.getSenderAddress());
+                            msg.getRecieverHostIP(),
+                            msg.getSenderHostIP());
                     Message ack = new Message(ackMetadata, msg.ackPayload());
-                    fairLossLink.send(ack, msg.getSenderAddress());
+                    fairLossLink.send(ack, msg.getSenderHostIP());
                     publisher.submit(packet);
 
                 }

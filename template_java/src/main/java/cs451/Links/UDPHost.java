@@ -14,7 +14,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import cs451.Models.IPAddress;
+import cs451.Models.HostIP;
+import cs451.Parser.Host;
 
 /**
  * Class representing a host in the network.
@@ -25,7 +26,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
     private DatagramSocket socket;
     private SubmissionPublisher<DatagramPacket> publisher;
     private final Logger logger = Logger.getLogger(UDPHost.class.getName());
-    private IPAddress ipAddress;
+    private HostIP hostIP;
 
     private AtomicBoolean running = new AtomicBoolean(false);
 
@@ -34,12 +35,11 @@ public class UDPHost implements Publisher<DatagramPacket> {
     /**
      * Creates a host with a given port number and IP address.
      * 
-     * @param portNbr  Port number of the host.
-     * @param ip       IP address of the host.
+     * @param host     TODO
      * @param executor ExecutorService to run threads.
      */
-    public UDPHost(int portNbr, String ip, ExecutorService executor) {
-        if (portNbr < 0 || portNbr > 65535) {
+    public UDPHost(Host host, ExecutorService executor) {
+        if (host.getPort() < 0 || host.getPort() > 65535) {
             System.err.println("Port number must be between 0 and 65535!");
             return;
         }
@@ -47,7 +47,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
         InetAddress address;
 
         try {
-            address = InetAddress.getByName(ip);
+            address = InetAddress.getByName(host.getIp());
         } catch (UnknownHostException e) {
             System.err.println("IP address is not valid!");
             running.set(false);
@@ -59,7 +59,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
         }
 
         try {
-            socket = new DatagramSocket(portNbr, address);
+            socket = new DatagramSocket(host.getPort(), address);
         } catch (SocketException e) {
             e.printStackTrace();
             running.set(false);
@@ -71,7 +71,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
         }
         this.executor = executor;
         publisher = new SubmissionPublisher<>(executor, 256);
-        ipAddress = new IPAddress(address, portNbr);
+        hostIP = new HostIP(host);
         running.set(true);
         logger.setLevel(Level.OFF);
     }
@@ -143,8 +143,8 @@ public class UDPHost implements Publisher<DatagramPacket> {
      * 
      * @return IP address of the host.
      */
-    public IPAddress getAddress() {
-        return ipAddress;
+    public HostIP getHostIP() {
+        return hostIP;
     }
 
     /**

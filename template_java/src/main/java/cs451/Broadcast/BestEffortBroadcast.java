@@ -12,19 +12,20 @@ import java.util.logging.Logger;
 
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
-import cs451.Models.IPAddress;
+import cs451.Models.HostIP;
 import cs451.Models.Message;
+import cs451.Models.Metadata;
 
 public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
     private PerfectLink perfectLink;
     private Subscription subscription;
     private Logger logger = Logger.getLogger(BestEffortBroadcast.class.getName());
-    private Set<IPAddress> destinations;
+    private Set<HostIP> destinations;
     private Publisher<DatagramPacket> publisher;
     private ExecutorService executor;
 
-    public BestEffortBroadcast(UDPHost host, Set<IPAddress> destinations, ExecutorService executor) {
+    public BestEffortBroadcast(UDPHost host, Set<HostIP> destinations, ExecutorService executor) {
         this.perfectLink = new PerfectLink(host, executor);
         this.destinations = destinations;
         perfectLink.subscribe(this);
@@ -35,7 +36,10 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
 
     @Override
     public void broadcast(Message m) {
-        for (IPAddress dest : destinations) {
+        for (HostIP dest : destinations) {
+            Metadata metadata = new Metadata(m.getType(), m.getSenderId(), dest.getId(), m.getSeqNum(),
+                    m.getSenderHostIP(), dest);
+            m.setMetadata(metadata);
             executor.submit(() -> perfectLink.send(m, dest));
         }
     }

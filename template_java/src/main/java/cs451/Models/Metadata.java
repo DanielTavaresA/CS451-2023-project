@@ -9,18 +9,18 @@ public class Metadata implements Serializable {
     private int recieverId;
     private int id;
     private int seqNum;
-    private IPAddress senderAddress;
-    private IPAddress recieverAddress;
+    private HostIP senderHostIP;
+    private HostIP recieverHostIP;
 
-    public Metadata(MsgType type, int senderId, int recieverId, int seqNum, IPAddress senderAddress,
-            IPAddress recieverAddress) {
+    public Metadata(MsgType type, int senderId, int recieverId, int seqNum, HostIP senderHostIP,
+            HostIP recieverHostIP) {
         this.type = type;
         this.senderId = senderId;
         this.recieverId = recieverId;
         this.id = UUID.randomUUID().hashCode();
         this.seqNum = seqNum;
-        this.senderAddress = senderAddress;
-        this.recieverAddress = recieverAddress;
+        this.senderHostIP = senderHostIP;
+        this.recieverHostIP = recieverHostIP;
     }
 
     public MsgType getType() {
@@ -43,18 +43,18 @@ public class Metadata implements Serializable {
         return seqNum;
     }
 
-    public IPAddress getSenderAddress() {
-        return senderAddress;
+    public HostIP getSenderHostIP() {
+        return senderHostIP;
     }
 
-    public IPAddress getRecieverAddress() {
-        return recieverAddress;
+    public HostIP getRecieverHostIP() {
+        return recieverHostIP;
     }
 
     public String toString() {
         return "Metadata: " + "type : " + type + " senderId : " + senderId + " recieverId : " + recieverId + " id : "
-                + id + " seqNum : " + seqNum + " senderAddress : " + senderAddress + " recieverAddress : "
-                + recieverAddress;
+                + id + " seqNum : " + seqNum + " senderAddress : " + senderHostIP + " recieverAddress : "
+                + recieverHostIP;
 
     }
 

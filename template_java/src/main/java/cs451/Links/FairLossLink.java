@@ -1,6 +1,7 @@
 package cs451.Links;
 
 import java.net.DatagramPacket;
+import java.net.InetAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -9,7 +10,7 @@ import java.util.concurrent.SubmissionPublisher;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import cs451.Models.IPAddress;
+import cs451.Models.HostIP;
 import cs451.Models.Message;
 
 /*
@@ -49,7 +50,7 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
      * @param dest the destination address of the message
      */
     @Override
-    public void send(Message m, IPAddress dest) {
+    public void send(Message m, HostIP dest) {
         DatagramPacket packet = new DatagramPacket(m.toBytes(), m.toBytes().length, dest.getAddress(), dest.getPort());
         logger.log(Level.INFO, "[FLL] - Sending message : " + m.getId() + " to " + dest);
         host.send(packet);
