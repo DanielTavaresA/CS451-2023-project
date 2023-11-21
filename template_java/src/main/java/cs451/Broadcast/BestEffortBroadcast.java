@@ -31,7 +31,7 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
         perfectLink.subscribe(this);
         publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
         this.executor = executor;
-        logger.setLevel(Level.OFF);
+        logger.setLevel(Level.INFO);
     }
 
     @Override
@@ -39,8 +39,8 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
         for (HostIP dest : destinations) {
             Metadata metadata = new Metadata(m.getType(), m.getSenderId(), dest.getId(), m.getSeqNum(),
                     m.getSenderHostIP(), dest);
-            m.setMetadata(metadata);
-            executor.submit(() -> perfectLink.send(m, dest));
+            Message msg = new Message(metadata, m.getData());
+            executor.submit(() -> perfectLink.send(msg, dest));
         }
     }
 
