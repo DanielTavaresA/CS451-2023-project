@@ -9,5 +9,5 @@ package cs451.Models;
  * - DATA: a message containing data to be processed by the receiving process
  */
 public enum MsgType {
-    ACK, DATA;
+    ACK, DATA, HEARTBEAT, HEARTBEAT_ACK;
 }
