@@ -8,6 +8,7 @@ import java.util.concurrent.Flow.Subscription;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cs451.Failure.PerfectFailureDetector;
 import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
 import cs451.Models.Message;
@@ -17,18 +18,21 @@ public class ReliableBroadcast implements Broadcaster, Subscriber<DatagramPacket
     private Subscription subscription;
     private BestEffortBroadcast beb;
     private Logger logger = Logger.getLogger(ReliableBroadcast.class.getName());
+    private ExecutorService executor;
+    private PerfectFailureDetector pfd;
 
     public ReliableBroadcast(UDPHost host, Set<HostIP> destinations, ExecutorService executor) {
         beb = new BestEffortBroadcast(host, destinations, executor);
         beb.subscribe(this);
+        this.executor = executor;
+        pfd = new PerfectFailureDetector(host, destinations, executor);
         logger.setLevel(Level.OFF);
 
     }
 
     @Override
     public void broadcast(Message m) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'broadcast'");
+        pfd.start();
     }
 
     @Override

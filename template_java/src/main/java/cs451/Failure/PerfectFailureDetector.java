@@ -48,6 +48,12 @@ public class PerfectFailureDetector implements FailureDetector, Subscriber<Datag
         this.myHostIP = host.getHostIP();
         this.failureMonitor = new ConcurrentHashMap<HostIP, ScheduledFuture<?>>();
         this.timeoutMap = new ConcurrentHashMap<HostIP, Long>();
+        this.waitForAck = new ConcurrentHashMap<HostIP, Set<Integer>>();
+        this.receivedAck = new ConcurrentHashMap<HostIP, Set<Integer>>();
+        this.sendProcess = new ConcurrentHashMap<HostIP, ScheduledFuture<?>>();
+        this.suspected = new HashSet<HostIP>();
+        logger.setLevel(Level.INFO);
+
         for (HostIP hostIP : endPoints) {
             timeoutMap.put(hostIP, BASIC_TIMEOUT);
             waitForAck.put(hostIP, new HashSet<Integer>());
@@ -61,15 +67,17 @@ public class PerfectFailureDetector implements FailureDetector, Subscriber<Datag
         for (HostIP hostIP : endPoints) {
             if (hostIP.getId() != myHostIP.getId()) {
                 ScheduledFuture<?> heartbeatSend = scheduler.scheduleAtFixedRate(() -> {
+                    logger.log(Level.INFO, "[PFD] - Sending heartbeat to " + hostIP.getId());
                     Metadata metadata = new Metadata(MsgType.HEARTBEAT, myHostIP.getId(), hostIP.getId(), 0, myHostIP,
                             hostIP);
-                    Message msg = new Message(metadata, null);
+                    Message msg = new Message(metadata, "heartbeat".getBytes());
                     pl.send(msg, hostIP);
                     waitForAck.get(hostIP).add(msg.getId());
                 }, 0, timeoutMap.get(hostIP), TIME_UNIT);
                 sendProcess.put(hostIP, heartbeatSend);
 
                 ScheduledFuture<?> heartbeatMonitor = scheduler.scheduleAtFixedRate(() -> {
+                    logger.log(Level.INFO, "[PFD] - Checking heartbeat from " + hostIP.getId());
                     Set<Integer> ackIntersect = new HashSet<Integer>(waitForAck.get(hostIP));
                     ackIntersect.retainAll(receivedAck.get(hostIP));
                     if (ackIntersect.size() != 0) {
@@ -94,8 +102,12 @@ public class PerfectFailureDetector implements FailureDetector, Subscriber<Datag
 
     @Override
     public void stop() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'stop'");
+        for (HostIP hostIP : endPoints) {
+            if (hostIP.getId() != myHostIP.getId()) {
+                sendProcess.get(hostIP).cancel(true);
+                failureMonitor.get(hostIP).cancel(true);
+            }
+        }
     }
 
     @Override
@@ -115,7 +127,7 @@ public class PerfectFailureDetector implements FailureDetector, Subscriber<Datag
     public void onNext(DatagramPacket item) {
         Message msg = Message.fromBytes(item.getData());
         if (msg.getType() == MsgType.HEARTBEAT) {
-            Metadata metadata = new Metadata(MsgType.HEARTBEAT_ACK, myHostIP.getId(), msg.getMetadata().getSenderId(),
+            Metadata metadata = new Metadata(MsgType.HEARTBEAT_ACK, myHostIP.getId(), msg.getSenderId(),
                     msg.getId(), myHostIP, msg.getSenderHostIP());
             Message ack = new Message(metadata, null);
             pl.send(ack, msg.getSenderHostIP());

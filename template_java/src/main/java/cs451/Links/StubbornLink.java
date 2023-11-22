@@ -62,7 +62,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
         acked = ConcurrentHashMap.newKeySet();
         fairLossLink.subscribe(this);
         publisher = new SubmissionPublisher<>(executor, 256);
-        logger.setLevel(Level.INFO);
+        logger.setLevel(Level.OFF);
     }
 
     /**

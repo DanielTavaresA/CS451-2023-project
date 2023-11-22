@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import cs451.Broadcast.BestEffortBroadcast;
+import cs451.Broadcast.ReliableBroadcast;
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
@@ -63,7 +64,7 @@ public class Applications {
 
     }
 
-    public static void runFifoBroadcast(Parser parser) {
+    public static void runBebBroadcast(Parser parser) {
         List<Host> hosts = parser.hosts();
 
         Host myHost = hosts.get(parser.myId() - 1);
@@ -85,6 +86,28 @@ public class Applications {
             Message msg = new Message(metadata, data);
             beb.broadcast(msg);
         }
+
+    }
+
+    public static void runRbBroadcast(Parser parser) {
+        List<Host> hosts = parser.hosts();
+
+        Host myHost = hosts.get(parser.myId() - 1);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        UDPHost myUDPHost = new UDPHost(myHost, executor);
+        myUDPHost.receive();
+        HostIP myAddress = myUDPHost.getHostIP();
+
+        int nbMsg = readFifoConfigFile(parser.config());
+
+        Log.logPath = Paths.get(parser.output());
+
+        Set<HostIP> destinations = HostIP.fromHosts(hosts);
+
+        ReliableBroadcast rb = new ReliableBroadcast(myUDPHost, destinations, executor);
+        Metadata metadata = new Metadata(MsgType.DATA, parser.myId(), 0, 0, myAddress, null);
+        Message msg = new Message(metadata, null);
+        rb.broadcast(msg);
 
     }
 

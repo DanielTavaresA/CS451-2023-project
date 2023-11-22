@@ -47,7 +47,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         delivered = new ConcurrentHashMap<Integer, Message>();
         this.executor = executor;
         publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
-        logger.setLevel(Level.OFF);
+        logger.setLevel(Level.INFO);
     }
 
     /**
@@ -62,6 +62,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         sent.put(m.getId(), m);
         logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest);
         String log = "b " + new String(m.getData()).trim() + "\n";
+        logger.log(Level.INFO, "[PL] - Sent message : " + m.getId() + " to " + dest);
         Log.logFile(log);
     }
 

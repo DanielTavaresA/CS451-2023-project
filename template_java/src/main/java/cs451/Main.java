@@ -59,7 +59,8 @@ public class Main {
         System.out.println("Broadcasting and delivering messages...\n");
 
         // Applications.runPerfectLinks(parser);
-        Applications.runFifoBroadcast(parser);
+        // Applications.runBebBroadcast(parser);
+        Applications.runRbBroadcast(parser);
         while (true) {
             // Sleep for 1 hour
             Thread.sleep(60 * 60 * 1000);
