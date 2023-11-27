@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 
 import cs451.Models.HostIP;
 import cs451.Models.Message;
+import cs451.Models.MsgType;
 import cs451.utils.Log;
 
 /**
@@ -30,7 +31,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     private ConcurrentHashMap<Integer, Message> sent;
     private ConcurrentHashMap<Integer, Message> delivered;
     private ExecutorService executor;
-    private Publisher<DatagramPacket> publisher;
+    private SubmissionPublisher<DatagramPacket> publisher;
 
     /**
      * Constructor for the PerfectLink class.
@@ -47,7 +48,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         delivered = new ConcurrentHashMap<Integer, Message>();
         this.executor = executor;
         publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
-        logger.setLevel(Level.INFO);
+        logger.setLevel(Level.OFF);
     }
 
     /**
@@ -79,12 +80,18 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     @Override
     public void deliver(DatagramPacket packet) {
         Message msg = Message.fromBytes(packet.getData());
+        if (msg.getType() == MsgType.ACK) {
+            logger.log(Level.INFO, "[PL] - Received ACK for message : " + msg.getAckedId());
+            publisher.submit(packet);
+            return;
+        }
         int ackedId = msg.getId();
         logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
                 + packet.getAddress().getHostAddress() + ":" + packet.getPort());
         delivered.put(ackedId, msg);
         String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).trim() + "\n";
         Log.logFile(log);
+        publisher.submit(packet);
     }
 
     @Override

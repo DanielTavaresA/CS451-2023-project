@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import cs451.Parser.Host;
@@ -37,6 +38,21 @@ public class HostIP implements Serializable {
 
     public String toString() {
         return address.getHostAddress().toString() + ":" + port;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null)
+            return false;
+        if (!(obj instanceof HostIP))
+            return false;
+        HostIP ip = (HostIP) obj;
+        return this.address.equals(ip.getAddress()) && this.port == ip.getPort() && this.id == ip.getId();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(address, port, id);
     }
 
     public static Set<HostIP> fromHosts(List<Host> hosts) {

@@ -31,7 +31,7 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
         perfectLink.subscribe(this);
         publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
         this.executor = executor;
-        logger.setLevel(Level.INFO);
+        logger.setLevel(Level.OFF);
     }
 
     @Override

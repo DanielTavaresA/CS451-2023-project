@@ -106,7 +106,7 @@ public class Applications {
 
         ReliableBroadcast rb = new ReliableBroadcast(myUDPHost, destinations, executor);
         Metadata metadata = new Metadata(MsgType.DATA, parser.myId(), 0, 0, myAddress, null);
-        Message msg = new Message(metadata, null);
+        Message msg = new Message(metadata, "broadcast".getBytes());
         rb.broadcast(msg);
 
     }

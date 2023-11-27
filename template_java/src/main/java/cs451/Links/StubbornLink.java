@@ -116,6 +116,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                     logger.log(Level.INFO, "[SBL] - Received ACK for message : " + ackedId);
                     acked.add(ackedId);
                     logger.log(Level.INFO, "[SBL] - Added ACK : " + ackedId);
+                    publisher.submit(packet);
 
                 }
 
@@ -126,16 +127,13 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                     delivered.put(msg.getId(), msg);
                     logger.log(Level.INFO, "[SBL] - Delivering packet : " + msg.getId() + " from "
                             + packet.getAddress().getHostAddress() + ":" + packet.getPort());
-
                     Metadata ackMetadata = new Metadata(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(), 0,
                             msg.getRecieverHostIP(),
                             msg.getSenderHostIP());
                     Message ack = new Message(ackMetadata, msg.ackPayload());
                     fairLossLink.send(ack, msg.getSenderHostIP());
                     publisher.submit(packet);
-
                 }
-
                 break;
             default:
                 break;
