@@ -15,6 +15,7 @@ import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
 import cs451.Models.Message;
 import cs451.Models.Metadata;
+import cs451.Models.MsgType;
 
 public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
@@ -22,7 +23,7 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
     private Subscription subscription;
     private Logger logger = Logger.getLogger(BestEffortBroadcast.class.getName());
     private Set<HostIP> destinations;
-    private Publisher<DatagramPacket> publisher;
+    private SubmissionPublisher<DatagramPacket> publisher;
     private ExecutorService executor;
 
     public BestEffortBroadcast(UDPHost host, Set<HostIP> destinations, ExecutorService executor) {
@@ -40,13 +41,18 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
             Metadata metadata = new Metadata(m.getType(), m.getSenderId(), dest.getId(), m.getSeqNum(),
                     m.getSenderHostIP(), dest);
             Message msg = new Message(metadata, m.getData());
+            logger.info("[BEB] - Sending message : " + msg.toString());
             executor.submit(() -> perfectLink.send(msg, dest));
         }
     }
 
     @Override
     public void deliver(DatagramPacket pkt) {
-        logger.info("[BEB] Delivering packet");
+        Message m = Message.fromBytes(pkt.getData());
+        logger.info("[BEB] - Delivering packet : " + m.toString());
+        if (m.getType() == MsgType.DATA) {
+            publisher.submit(pkt);
+        }
     }
 
     @Override

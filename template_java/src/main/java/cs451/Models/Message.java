@@ -7,6 +7,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Represents a message that can be sent between processes in a distributed
@@ -167,10 +169,31 @@ public class Message implements Serializable {
         return buffer.array();
     }
 
+    public Metadata getMetadata() {
+        return metadata.copy();
+    }
+
     public Metadata setMetadata(Metadata metadata) {
         Metadata oldMetadata = this.metadata;
         this.metadata = metadata;
         return oldMetadata;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(Arrays.hashCode(data), metadata.getId(), metadata.getSenderId(), metadata.getRecieverId(),
+                metadata.getSeqNum(), metadata.getSenderHostIP(), metadata.getRecieverHostIP(), metadata.getType());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this)
+            return true;
+        if (!(obj instanceof Message)) {
+            return false;
+        }
+        Message message = (Message) obj;
+        return Arrays.equals(data, message.data) && Objects.equals(metadata, message.metadata);
     }
 
     @Override

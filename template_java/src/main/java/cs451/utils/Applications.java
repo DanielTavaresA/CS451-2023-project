@@ -4,13 +4,16 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import cs451.Broadcast.BestEffortBroadcast;
-import cs451.Broadcast.ReliableBroadcast;
+import cs451.Broadcast.FIFOBroadcast;
+import cs451.Broadcast.UniformReliableBroadcast;
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
@@ -50,6 +53,7 @@ public class Applications {
         Host recieverHost = hosts.get(recieverId - 1);
 
         PerfectLink perfectLink = new PerfectLink(myUDPHost, executor);
+        perfectLink.activateLogging();
 
         if (parser.myId() != recieverId) {
             for (int i = 1; i <= nbMsg; i++) {
@@ -89,14 +93,14 @@ public class Applications {
 
     }
 
-    public static void runRbBroadcast(Parser parser) {
+    public static void runFIFOBroadcast(Parser parser) {
         List<Host> hosts = parser.hosts();
 
         Host myHost = hosts.get(parser.myId() - 1);
         ExecutorService executor = Executors.newFixedThreadPool(8);
         UDPHost myUDPHost = new UDPHost(myHost, executor);
         myUDPHost.receive();
-        HostIP myAddress = myUDPHost.getHostIP();
+        HostIP myHostIP = myUDPHost.getHostIP();
 
         int nbMsg = readFifoConfigFile(parser.config());
 
@@ -104,10 +108,13 @@ public class Applications {
 
         Set<HostIP> destinations = HostIP.fromHosts(hosts);
 
-        ReliableBroadcast rb = new ReliableBroadcast(myUDPHost, destinations, executor);
-        Metadata metadata = new Metadata(MsgType.DATA, parser.myId(), 0, 0, myAddress, null);
-        Message msg = new Message(metadata, "broadcast".getBytes());
-        rb.broadcast(msg);
+        FIFOBroadcast fb = new FIFOBroadcast(myUDPHost, destinations, executor);
+        fb.activateLogging();
+        for (int i = 1; i <= nbMsg; i++) {
+            Metadata metadata = new Metadata(MsgType.DATA, myHostIP.getId(), 0, i, myHostIP, null);
+            Message msg = new Message(metadata, "broadcast".getBytes());
+            fb.broadcast(msg);
+        }
 
     }
 

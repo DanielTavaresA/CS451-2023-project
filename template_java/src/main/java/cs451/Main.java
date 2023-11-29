@@ -60,7 +60,7 @@ public class Main {
 
         // Applications.runPerfectLinks(parser);
         // Applications.runBebBroadcast(parser);
-        Applications.runRbBroadcast(parser);
+        Applications.runFIFOBroadcast(parser);
         while (true) {
             // Sleep for 1 hour
             Thread.sleep(60 * 60 * 1000);

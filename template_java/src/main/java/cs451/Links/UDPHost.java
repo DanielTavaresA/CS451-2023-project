@@ -22,7 +22,7 @@ import cs451.Parser.Host;
  */
 public class UDPHost implements Publisher<DatagramPacket> {
 
-    private static final int MAX_PKT_SIZE = 4096;
+    private static final int MAX_PKT_SIZE = 8192;
     private DatagramSocket socket;
     private SubmissionPublisher<DatagramPacket> publisher;
     private final Logger logger = Logger.getLogger(UDPHost.class.getName());

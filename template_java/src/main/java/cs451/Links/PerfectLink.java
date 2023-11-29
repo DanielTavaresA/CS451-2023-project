@@ -32,6 +32,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     private ConcurrentHashMap<Integer, Message> delivered;
     private ExecutorService executor;
     private SubmissionPublisher<DatagramPacket> publisher;
+    private boolean mustLog = false;
 
     /**
      * Constructor for the PerfectLink class.
@@ -51,6 +52,10 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         logger.setLevel(Level.OFF);
     }
 
+    public void activateLogging() {
+        mustLog = true;
+    }
+
     /**
      * Sends a message using the Perfect Link protocol.
      * 
@@ -62,9 +67,11 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         executor.submit(() -> stubbornLink.send(m, dest));
         sent.put(m.getId(), m);
         logger.log(Level.INFO, "[PL] - Sending message : " + m.getId() + " to " + dest);
-        String log = "b " + new String(m.getData()).trim() + "\n";
         logger.log(Level.INFO, "[PL] - Sent message : " + m.getId() + " to " + dest);
-        Log.logFile(log);
+        if (mustLog) {
+            String log = "b " + new String(m.getData()).trim() + "\n";
+            Log.logFile(log);
+        }
     }
 
     /**
@@ -89,8 +96,10 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
                 + packet.getAddress().getHostAddress() + ":" + packet.getPort());
         delivered.put(ackedId, msg);
-        String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).trim() + "\n";
-        Log.logFile(log);
+        if (mustLog) {
+            String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).trim() + "\n";
+            Log.logFile(log);
+        }
         publisher.submit(packet);
     }
 
