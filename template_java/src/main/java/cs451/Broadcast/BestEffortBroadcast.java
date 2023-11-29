@@ -17,6 +17,10 @@ import cs451.Models.Message;
 import cs451.Models.Metadata;
 import cs451.Models.MsgType;
 
+/**
+ * BestEffortBroadcast class provides a best-effort broadcast mechanism using a
+ * PerfectLink to send messages to multiple destinations.
+ */
 public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
 
     private PerfectLink perfectLink;

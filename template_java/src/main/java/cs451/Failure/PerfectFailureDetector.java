@@ -172,7 +172,6 @@ public class PerfectFailureDetector implements FailureDetector, Subscriber<Datag
 
     @Override
     public void crash() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'crash'");
     }
 

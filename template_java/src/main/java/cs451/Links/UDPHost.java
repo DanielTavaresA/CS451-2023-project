@@ -35,7 +35,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
     /**
      * Creates a host with a given port number and IP address.
      * 
-     * @param host     TODO
+     * @param host     Host object containing port number, IP address and id.
      * @param executor ExecutorService to run threads.
      */
     public UDPHost(Host host, ExecutorService executor) {

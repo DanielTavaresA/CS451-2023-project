@@ -22,6 +22,14 @@ import cs451.Models.HostIP;
 import cs451.Models.Message;
 import cs451.utils.Log;
 
+/**
+ * .
+ * FIFOBroadcast class provides a FIFO (First-In-First-Out) ordering guarantee
+ * for message delivery.
+ * Messages are broadcasted using the UniformReliableBroadcast protocol.
+ * It keeps track of the past messages received from each sender and delivers
+ * messages in the correct order.
+ */
 public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
 
     private Subscription subscription;
@@ -64,6 +72,13 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
 
     }
 
+    /**
+     * Prepares a message to be sent by adding the past messages received from each
+     * sender.
+     * 
+     * @param m the message to be sent
+     * @return the prepared message
+     */
     private Message prepareMessage(Message m) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream outputStream;
@@ -80,6 +95,11 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
         return new Message(m.getMetadata(), data);
     }
 
+    /**
+     * Unpacks a message in the FIFO broadcast protocol.
+     * It retrieves the received message and the set of past messages received from
+     * each host.
+     */
     @SuppressWarnings("unchecked")
     private FIFOMessage unpackMessage(Message m) {
         ByteArrayInputStream bis = new ByteArrayInputStream(m.getData());
@@ -124,6 +144,7 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
 
     @Override
     public void onNext(DatagramPacket item) {
+        // unpack message
         Message pack = Message.fromBytes(item.getData());
         Message m = Message.fromBytes(pack.getData());
         FIFOMessage unpacked = unpackMessage(m);
@@ -131,18 +152,24 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
         logger.info("[FIFO] - Received message " + receivedMessage.toString());
         ConcurrentHashMap<HostIP, Set<Message>> receivedPast = unpacked.getPast();
         logger.info("[FIFO] - Received past " + receivedPast.toString());
+
         if (!delivered.contains(receivedMessage)) {
+            // for each host, checks which messages from past can be delivered
             for (HostIP src : receivedPast.keySet()) {
                 List<Message> toDeliver = new ArrayList<Message>();
                 toDeliver = receivedPast.get(src).stream().filter(msg -> msg.getSeqNum() >= next.get(src))
                         .sorted((m1, m2) -> m1.getSeqNum() - m2.getSeqNum()).collect(Collectors.toList());
                 logger.info("[FIFO] - toDeliver : " + toDeliver.toString());
+                // for each possible message from past, checks if it should be delivered
                 for (Message msg : toDeliver) {
                     if (!delivered.contains(msg) && msg.getSeqNum() == next.get(src)) {
+                        // empack message to match the format of the message received
                         Message empack = prepareMessage(msg);
-                        DatagramPacket pkt = new DatagramPacket(empack.toBytes(), empack.toBytes().length,
+                        Message mDeliver = new Message(empack.getMetadata(), empack.toBytes());
+                        DatagramPacket pkt = new DatagramPacket(mDeliver.toBytes(), mDeliver.toBytes().length,
                                 msg.getSenderHostIP().getAddress(), msg.getSenderHostIP().getPort());
                         deliver(pkt);
+                        // update
                         delivered.add(msg);
                         past.get(msg.getSenderHostIP()).add(msg);
                         next.put(src, next.get(src) + 1);
@@ -150,6 +177,7 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
                 }
 
             }
+            // deliver the received message
             deliver(item);
             delivered.add(receivedMessage);
             past.get(receivedMessage.getSenderHostIP()).add(receivedMessage);
