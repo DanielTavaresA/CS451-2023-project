@@ -92,7 +92,6 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Datagra
                     + m.getId() + "\n";
             Log.logFile(log);
         }
-        System.out.println("[URB] -  Delivering message ");
         publisher.submit(pkt);
     }
 
@@ -156,10 +155,14 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Datagra
     private void checkDeliver(Message m, DatagramPacket item) {
         logger.info("[URB] - checking if message can be delivered " + m.toString() + " "
                 + receivedMsgFromMap.get(m).toString() + " " + destinations.toString() + " " + delivered.toString());
-        if (!delivered.contains(m) && receivedMsgFromMap.get(m).containsAll(destinations)) {
+        if (!delivered.contains(m) && containsMajority(m)) {
             delivered.add(m);
             deliver(item);
         }
+    }
+
+    private boolean containsMajority(Message m) {
+        return receivedMsgFromMap.get(m).size() > destinations.size() / 2;
     }
 
     @Override

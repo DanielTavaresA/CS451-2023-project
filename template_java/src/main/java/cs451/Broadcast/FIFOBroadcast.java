@@ -154,6 +154,13 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
         logger.info("[FIFO] - Received past " + receivedPast.toString());
 
         if (!delivered.contains(receivedMessage)) {
+            // deliver the received message
+            if (receivedMessage.getSeqNum() == next.get(receivedMessage.getSenderHostIP())) {
+                deliver(item);
+                delivered.add(receivedMessage);
+                past.get(receivedMessage.getSenderHostIP()).add(receivedMessage);
+                next.put(receivedMessage.getSenderHostIP(), next.get(receivedMessage.getSenderHostIP()) + 1);
+            }
             // for each host, checks which messages from past can be delivered
             for (HostIP src : receivedPast.keySet()) {
                 List<Message> toDeliver = new ArrayList<Message>();
@@ -163,6 +170,8 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
                 // for each possible message from past, checks if it should be delivered
                 for (Message msg : toDeliver) {
                     if (!delivered.contains(msg) && msg.getSeqNum() == next.get(src)) {
+                        logger.info("[FIFO] - Delivering message from past " + msg.toString());
+                        logger.info("[FIFO] - Next : " + next.toString());
                         // empack message to match the format of the message received
                         Message empack = prepareMessage(msg);
                         Message mDeliver = new Message(empack.getMetadata(), empack.toBytes());
@@ -178,10 +187,12 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<DatagramPacket> {
 
             }
             // deliver the received message
-            deliver(item);
-            delivered.add(receivedMessage);
-            past.get(receivedMessage.getSenderHostIP()).add(receivedMessage);
-            next.put(receivedMessage.getSenderHostIP(), next.get(receivedMessage.getSenderHostIP()) + 1);
+            if (receivedMessage.getSeqNum() == next.get(receivedMessage.getSenderHostIP())) {
+                deliver(item);
+                delivered.add(receivedMessage);
+                past.get(receivedMessage.getSenderHostIP()).add(receivedMessage);
+                next.put(receivedMessage.getSenderHostIP(), next.get(receivedMessage.getSenderHostIP()) + 1);
+            }
         }
         subscription.request(1);
     }
