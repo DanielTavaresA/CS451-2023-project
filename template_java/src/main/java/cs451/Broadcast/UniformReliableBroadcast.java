@@ -102,7 +102,7 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
 
     @Override
     public void onNext(Message item) {
-        executor.submit(() -> process(item));
+        process(item);
         subscription.request(1);
     }
 
