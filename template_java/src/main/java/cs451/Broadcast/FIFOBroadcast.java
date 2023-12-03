@@ -52,7 +52,7 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<Message> {
         }
         urb = new UniformReliableBroadcast(host, destinations, executor);
         urb.subscribe(this);
-        logger.setLevel(Level.INFO);
+        logger.setLevel(Level.OFF);
     }
 
     public void activateLogging() {

@@ -18,6 +18,7 @@ import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
 import cs451.Models.Message;
 import cs451.Models.Metadata;
+import cs451.Models.MsgType;
 import cs451.utils.Log;
 
 /**
@@ -69,7 +70,7 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
     public void broadcast(Message m) {
         // pfd.start();
         // adapt metadata for broadcast
-        Metadata metadata = new Metadata(m.getType(), myHostIP.getId(), m.getSenderId(), m.getSeqNum(),
+        Metadata metadata = new Metadata(MsgType.DATA, myHostIP.getId(), m.getSenderId(), m.getSeqNum(),
                 myHostIP, m.getSenderHostIP());
         // empacks message to assure compatibility with lower layers
         Message msg = new Message(metadata, m.toBytes());
@@ -101,6 +102,11 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
 
     @Override
     public void onNext(Message item) {
+        executor.submit(() -> process(item));
+        subscription.request(1);
+    }
+
+    private void process(Message item) {
         // unpacks message
         Message msgUnpack = Message.fromBytes(item.getData());
         logger.info("[URB] -  Received message : " + item.toString() + "\n [URB] - unpacked : " + msgUnpack.toString());
@@ -124,7 +130,6 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
             beb.broadcast(msg);
         }
         checkDeliver(msgUnpack);
-        subscription.request(1);
     }
 
     /**
