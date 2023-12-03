@@ -15,16 +15,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import cs451.Models.HostIP;
+import cs451.Models.Message;
 import cs451.Parser.Host;
 
 /**
  * Class representing a host in the network.
  */
-public class UDPHost implements Publisher<DatagramPacket> {
+public class UDPHost implements Publisher<Message> {
 
     private static final int MAX_PKT_SIZE = 65535;
     private DatagramSocket socket;
-    private SubmissionPublisher<DatagramPacket> publisher;
+    private SubmissionPublisher<Message> publisher;
     private final Logger logger = Logger.getLogger(UDPHost.class.getName());
     private HostIP hostIP;
 
@@ -105,7 +106,6 @@ public class UDPHost implements Publisher<DatagramPacket> {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 try {
                     socket.receive(packet);
-                    logger.warning("" + packet.getLength());
                 } catch (IOException e) {
                     e.printStackTrace();
                     return;
@@ -114,7 +114,8 @@ public class UDPHost implements Publisher<DatagramPacket> {
                         "Received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort()
                                 + " with length "
                                 + packet.getLength() + " and hashcode " + packet.hashCode());
-                publisher.submit(packet);
+                Message msg = Message.fromBytes(packet.getData());
+                publisher.submit(msg);
 
             }
             return;
@@ -152,7 +153,7 @@ public class UDPHost implements Publisher<DatagramPacket> {
      * Subscribes a subscriber to the publisher.
      */
     @Override
-    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+    public void subscribe(Subscriber<? super Message> subscriber) {
         publisher.subscribe(subscriber);
     }
 

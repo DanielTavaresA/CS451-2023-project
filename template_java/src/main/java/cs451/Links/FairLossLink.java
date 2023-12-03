@@ -19,11 +19,11 @@ import cs451.Models.Message;
  * - FL2 : Finite duplication : If a message is sent a finite number of times then m is delivered a finite number of times
  * - FL3 : No creation : No message is delivered unless it was sent
  */
-public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
+public class FairLossLink implements Link, Subscriber<Message>, Publisher<Message> {
 
     private Subscription subscription;
     private final Logger logger = Logger.getLogger(FairLossLink.class.getName());
-    private final SubmissionPublisher<DatagramPacket> publisher;
+    private final SubmissionPublisher<Message> publisher;
     private final UDPHost host;
 
     /**
@@ -63,10 +63,9 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
      * @param packet the DatagramPacket containing the message to be delivered
      */
     @Override
-    public void deliver(DatagramPacket packet) {
-        Message msg = Message.fromBytes(packet.getData());
+    public void deliver(Message msg) {
         logger.log(Level.INFO, "[FLL] - Delivering message : " + msg.getId() + " from "
-                + packet.getAddress().getHostAddress() + ":" + packet.getPort());
+                + msg.getSenderHostIP());
     }
 
     @Override
@@ -77,7 +76,7 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
     }
 
     @Override
-    public void onNext(DatagramPacket item) {
+    public void onNext(Message item) {
         deliver(item);
         publisher.submit(item);
         subscription.request(1);
@@ -95,7 +94,7 @@ public class FairLossLink implements Link, Subscriber<DatagramPacket>, Publisher
     }
 
     @Override
-    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+    public void subscribe(Subscriber<? super Message> subscriber) {
         publisher.subscribe(subscriber);
     }
 

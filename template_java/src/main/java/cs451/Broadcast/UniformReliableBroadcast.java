@@ -27,10 +27,10 @@ import cs451.utils.Log;
  * Messages are broadcasted uniformly to a set of destinations and delivered to
  * all destinations reliably.
  */
-public class UniformReliableBroadcast implements Broadcaster, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
+public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message>, Publisher<Message> {
 
     private Subscription subscription;
-    private SubmissionPublisher<DatagramPacket> publisher;
+    private SubmissionPublisher<Message> publisher;
     private HostIP myHostIP;
     private BestEffortBroadcast beb;
     private Logger logger = Logger.getLogger(UniformReliableBroadcast.class.getName());
@@ -48,7 +48,7 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Datagra
         beb.subscribe(this);
         this.executor = executor;
         this.destinations = destinations;
-        publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
+        publisher = new SubmissionPublisher<Message>(executor, 256);
         delivered = new HashSet<Message>();
         receivedMsgFromMap = new ConcurrentHashMap<Message, Set<HostIP>>();
         forward = new ConcurrentHashMap<HostIP, Set<Message>>();
@@ -82,17 +82,15 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Datagra
     }
 
     @Override
-    public void deliver(DatagramPacket pkt) {
+    public void deliver(Message msgUnpack) {
         // unpacks message
-        Message pack = Message.fromBytes(pkt.getData());
-        Message m = Message.fromBytes(pack.getData());
-        logger.info("[URB] -  Delivering message " + m.toString());
+        logger.info("[URB] -  Delivering message " + msgUnpack.toString());
         if (mustLog) {
-            String log = "d " + m.getSenderId()
-                    + m.getId() + "\n";
+            String log = "d " + msgUnpack.getSenderId()
+                    + msgUnpack.getId() + "\n";
             Log.logFile(log);
         }
-        publisher.submit(pkt);
+        publisher.submit(msgUnpack);
     }
 
     @Override
@@ -102,48 +100,31 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Datagra
     }
 
     @Override
-    public void onNext(DatagramPacket item) {
+    public void onNext(Message item) {
         // unpacks message
-        Message pack = Message.fromBytes(item.getData());
-        Message m = Message.fromBytes(pack.getData());
-        logger.info("[URB] -  Received message : " + pack.toString() + "\n [URB] - unpacked : " + m.toString());
-        receivedMsgFromMap.putIfAbsent(m, new HashSet<HostIP>());
+        Message msgUnpack = Message.fromBytes(item.getData());
+        logger.info("[URB] -  Received message : " + item.toString() + "\n [URB] - unpacked : " + msgUnpack.toString());
+        receivedMsgFromMap.putIfAbsent(msgUnpack, new HashSet<HostIP>());
 
         // adds sender to the set of hosts that sent the message
-        HostIP sender = findHost(item.getAddress(), item.getPort());
-        receivedMsgFromMap.get(m).add(sender);
+        receivedMsgFromMap.get(msgUnpack).add(item.getSenderHostIP());
 
         logger.info("[URB] -    receivedMsgFromMap : " + receivedMsgFromMap.toString());
         logger.info("[URB] -  forward : " + forward.toString());
 
         // adds message to the set of messages to forward if it is not already in it and
         // broadcasts it
-        if (!(forward.get(m.getSenderHostIP()).contains(m))) {
-            forward.get(m.getSenderHostIP()).add(m);
+        if (!(forward.get(msgUnpack.getSenderHostIP()).contains(msgUnpack))) {
+            forward.get(msgUnpack.getSenderHostIP()).add(msgUnpack);
             logger.info("[URB] -  adding to forward" + forward.toString());
-            Metadata metadata = new Metadata(m.getType(), myHostIP.getId(), m.getSenderId(), m.getSeqNum(),
-                    myHostIP, m.getSenderHostIP());
-            Message msg = new Message(metadata, m.toBytes());
+            Metadata metadata = new Metadata(msgUnpack.getType(), myHostIP.getId(), msgUnpack.getSenderId(),
+                    msgUnpack.getSeqNum(),
+                    myHostIP, msgUnpack.getSenderHostIP());
+            Message msg = new Message(metadata, msgUnpack.toBytes());
             beb.broadcast(msg);
         }
-        checkDeliver(m, item);
+        checkDeliver(msgUnpack);
         subscription.request(1);
-    }
-
-    /**
-     * Finds the host with the given address and port in the set of destinations
-     * 
-     * @param address host address
-     * @param port    host port
-     * @return the host with the given address and port
-     */
-    private HostIP findHost(InetAddress address, int port) {
-        for (HostIP host : destinations) {
-            if (Objects.equals(host.getAddress(), address) && host.getPort() == port) {
-                return host;
-            }
-        }
-        return null;
     }
 
     /**
@@ -152,12 +133,12 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Datagra
      * @param m    message to check
      * @param item datagram packet containing the message
      */
-    private void checkDeliver(Message m, DatagramPacket item) {
+    private void checkDeliver(Message m) {
         logger.info("[URB] - checking if message can be delivered " + m.toString() + " "
                 + receivedMsgFromMap.get(m).toString() + " " + destinations.toString() + " " + delivered.toString());
         if (!delivered.contains(m) && containsMajority(m)) {
             delivered.add(m);
-            deliver(item);
+            deliver(m);
         }
     }
 
@@ -176,7 +157,7 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Datagra
     }
 
     @Override
-    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+    public void subscribe(Subscriber<? super Message> subscriber) {
         publisher.subscribe(subscriber);
     }
 

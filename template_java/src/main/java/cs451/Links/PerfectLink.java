@@ -23,7 +23,7 @@ import cs451.utils.Log;
  * - No duplication : no message is delivered more than once
  * - No creation : No message is delivered unless it was sent
  */
-public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
+public class PerfectLink implements Link, Subscriber<Message>, Publisher<Message> {
 
     private Subscription subscription;
     private Logger logger = Logger.getLogger(PerfectLink.class.getName());
@@ -31,7 +31,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     private ConcurrentHashMap<Integer, Message> sent;
     private ConcurrentHashMap<Integer, Message> delivered;
     private ExecutorService executor;
-    private SubmissionPublisher<DatagramPacket> publisher;
+    private SubmissionPublisher<Message> publisher;
     private boolean mustLog = false;
 
     /**
@@ -48,7 +48,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
         sent = new ConcurrentHashMap<Integer, Message>();
         delivered = new ConcurrentHashMap<Integer, Message>();
         this.executor = executor;
-        publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
+        publisher = new SubmissionPublisher<Message>(executor, 256);
         logger.setLevel(Level.OFF);
     }
 
@@ -85,22 +85,21 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
      *               delivered
      */
     @Override
-    public void deliver(DatagramPacket packet) {
-        Message msg = Message.fromBytes(packet.getData());
+    public void deliver(Message msg) {
         if (msg.getType() == MsgType.ACK) {
             logger.log(Level.INFO, "[PL] - Received ACK for message : " + msg.getAckedId());
-            publisher.submit(packet);
+            publisher.submit(msg);
             return;
         }
         int ackedId = msg.getId();
         logger.log(Level.INFO, "[PL] - Delivering message : " + msg.getId() + " from "
-                + packet.getAddress().getHostAddress() + ":" + packet.getPort());
+                + msg.getSenderHostIP());
         delivered.put(ackedId, msg);
         if (mustLog) {
             String log = "d " + msg.getSenderId() + " " + new String(msg.getData()).trim() + "\n";
             Log.logFile(log);
         }
-        publisher.submit(packet);
+        publisher.submit(msg);
     }
 
     @Override
@@ -110,7 +109,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     }
 
     @Override
-    public void onNext(DatagramPacket item) {
+    public void onNext(Message item) {
         deliver(item);
         subscription.request(1);
     }
@@ -126,7 +125,7 @@ public class PerfectLink implements Link, Subscriber<DatagramPacket>, Publisher<
     }
 
     @Override
-    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+    public void subscribe(Subscriber<? super Message> subscriber) {
         publisher.subscribe(subscriber);
     }
 

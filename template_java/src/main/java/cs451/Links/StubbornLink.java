@@ -28,7 +28,7 @@ import cs451.Models.MsgType;
  * times
  * SL2. No creation: No message is delivered unless it was sent
  */
-public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
+public class StubbornLink implements Link, Subscriber<Message>, Publisher<Message> {
 
     private static final long TIME_PERIOD = 5000;
     private static final TimeUnit TIME_UNIT = TimeUnit.MILLISECONDS;
@@ -39,7 +39,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     private Subscription subscription;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final Logger logger = Logger.getLogger(StubbornLink.class.getName());
-    private final SubmissionPublisher<DatagramPacket> publisher;
+    private final SubmissionPublisher<Message> publisher;
 
     /**
      * This class represents a StubbornLink, which is a reliable link that
@@ -103,8 +103,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
      * @param packet the packet to be delivered
      */
     @Override
-    public void deliver(DatagramPacket packet) {
-        Message msg = Message.fromBytes(packet.getData());
+    public void deliver(Message msg) {
         logger.log(Level.INFO,
                 "[SBL] - Received  : " + msg.getId());
 
@@ -116,7 +115,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                     logger.log(Level.INFO, "[SBL] - Received ACK for message : " + ackedId);
                     acked.add(ackedId);
                     logger.log(Level.INFO, "[SBL] - Added ACK : " + ackedId);
-                    publisher.submit(packet);
+                    publisher.submit(msg);
 
                 }
 
@@ -126,13 +125,14 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
                 if (!delivered.containsKey(msg.getId())) {
                     delivered.put(msg.getId(), msg);
                     logger.log(Level.INFO, "[SBL] - Delivering packet : " + msg.getId() + " from "
-                            + packet.getAddress().getHostAddress() + ":" + packet.getPort());
-                    Metadata ackMetadata = new Metadata(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(), 0,
+                            + msg.getSenderHostIP());
+                    Metadata ackMetadata = new Metadata(MsgType.ACK, msg.getRecieverId(), msg.getSenderId(),
+                            msg.getSeqNum(),
                             msg.getRecieverHostIP(),
                             msg.getSenderHostIP());
                     Message ack = new Message(ackMetadata, msg.ackPayload());
                     fairLossLink.send(ack, msg.getSenderHostIP());
-                    publisher.submit(packet);
+                    publisher.submit(msg);
                 }
                 break;
             default:
@@ -149,7 +149,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     }
 
     @Override
-    public void onNext(DatagramPacket item) {
+    public void onNext(Message item) {
         deliver(item);
         subscription.request(1);
 
@@ -166,7 +166,7 @@ public class StubbornLink implements Link, Subscriber<DatagramPacket>, Publisher
     }
 
     @Override
-    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+    public void subscribe(Subscriber<? super Message> subscriber) {
         publisher.subscribe(subscriber);
     }
 

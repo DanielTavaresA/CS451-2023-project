@@ -21,20 +21,20 @@ import cs451.Models.MsgType;
  * BestEffortBroadcast class provides a best-effort broadcast mechanism using a
  * PerfectLink to send messages to multiple destinations.
  */
-public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPacket>, Publisher<DatagramPacket> {
+public class BestEffortBroadcast implements Broadcaster, Subscriber<Message>, Publisher<Message> {
 
     private PerfectLink perfectLink;
     private Subscription subscription;
     private Logger logger = Logger.getLogger(BestEffortBroadcast.class.getName());
     private Set<HostIP> destinations;
-    private SubmissionPublisher<DatagramPacket> publisher;
+    private SubmissionPublisher<Message> publisher;
     private ExecutorService executor;
 
     public BestEffortBroadcast(UDPHost host, Set<HostIP> destinations, ExecutorService executor) {
         this.perfectLink = new PerfectLink(host, executor);
         this.destinations = destinations;
         perfectLink.subscribe(this);
-        publisher = new SubmissionPublisher<DatagramPacket>(executor, 256);
+        publisher = new SubmissionPublisher<Message>(executor, 256);
         this.executor = executor;
         logger.setLevel(Level.OFF);
     }
@@ -51,11 +51,10 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
     }
 
     @Override
-    public void deliver(DatagramPacket pkt) {
-        Message m = Message.fromBytes(pkt.getData());
-        logger.info("[BEB] - Delivering packet : " + m.toString());
-        if (m.getType() == MsgType.DATA) {
-            publisher.submit(pkt);
+    public void deliver(Message msg) {
+        logger.info("[BEB] - Delivering packet : " + msg.toString());
+        if (msg.getType() == MsgType.DATA) {
+            publisher.submit(msg);
         }
     }
 
@@ -66,7 +65,7 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
     }
 
     @Override
-    public void onNext(DatagramPacket item) {
+    public void onNext(Message item) {
         deliver(item);
         subscription.request(1);
     }
@@ -82,7 +81,7 @@ public class BestEffortBroadcast implements Broadcaster, Subscriber<DatagramPack
     }
 
     @Override
-    public void subscribe(Subscriber<? super DatagramPacket> subscriber) {
+    public void subscribe(Subscriber<? super Message> subscriber) {
         publisher.subscribe(subscriber);
     }
 

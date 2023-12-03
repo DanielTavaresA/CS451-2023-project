@@ -27,7 +27,7 @@ import cs451.Models.MsgType;
  * PerfectLink
  * class to send and receive heartbeat messages to detect failures.
  */
-public class PerfectFailureDetector implements FailureDetector, Subscriber<DatagramPacket> {
+public class PerfectFailureDetector implements FailureDetector, Subscriber<Message> {
 
     private ExecutorService executor;
     private PerfectLink pl;
@@ -193,7 +193,7 @@ public class PerfectFailureDetector implements FailureDetector, Subscriber<Datag
      * @param item The received DatagramPacket.
      */
     @Override
-    public void onNext(DatagramPacket item) {
+    public void onNext(Message item) {
         Message msg = Message.fromBytes(item.getData());
         if (msg.getType() == MsgType.ACK) {
             Set<Integer> waitForAckSet = waitForAck.get(msg.getSenderHostIP());
