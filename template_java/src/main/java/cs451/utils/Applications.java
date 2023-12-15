@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 
 import cs451.Broadcast.BestEffortBroadcast;
 import cs451.Broadcast.FIFOBroadcast;
+import cs451.Broadcast.UniformReliableBroadcast;
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
@@ -103,8 +104,9 @@ public class Applications {
 
         Set<HostIP> destinations = HostIP.fromHosts(hosts);
 
-        FIFOBroadcast fb = new FIFOBroadcast(myUDPHost, destinations, executor);
+        UniformReliableBroadcast fb = new UniformReliableBroadcast(myUDPHost, destinations, executor);
         fb.activateLogging();
+        fb.activateTimestampLogging();
         for (int i = 1; i <= nbMsg; i++) {
             Metadata metadata = new Metadata(MsgType.DATA, myHostIP.getId(), 0, i, myHostIP, null);
             Message msg = new Message(metadata, "broadcast".getBytes());

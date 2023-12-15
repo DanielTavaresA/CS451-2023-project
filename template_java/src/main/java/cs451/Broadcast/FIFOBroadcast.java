@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
 import cs451.Models.Message;
+import cs451.Models.Metadata;
+import cs451.Models.MsgType;
 import cs451.utils.Log;
 
 /**
@@ -33,9 +35,12 @@ import cs451.utils.Log;
 public class FIFOBroadcast implements Broadcaster, Subscriber<Message> {
 
     private Subscription subscription;
+    private HostIP myHostIP;
     private ConcurrentHashMap<HostIP, Set<Message>> past;
     private ConcurrentHashMap<HostIP, Integer> next;
+    private ConcurrentHashMap<Message, Set<HostIP>> acked;
     private Set<Message> delivered;
+    private Set<HostIP> destinations;
     private ExecutorService executor;
     private UniformReliableBroadcast urb;
     private Logger logger = Logger.getLogger(FIFOBroadcast.class.getName());
@@ -43,9 +48,12 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<Message> {
 
     public FIFOBroadcast(UDPHost host, Set<HostIP> destinations, ExecutorService executor) {
         this.executor = executor;
+        myHostIP = host.getHostIP();
         past = new ConcurrentHashMap<HostIP, Set<Message>>();
         next = new ConcurrentHashMap<HostIP, Integer>();
+        acked = new ConcurrentHashMap<Message, Set<HostIP>>();
         delivered = new HashSet<Message>();
+        this.destinations = destinations;
         for (HostIP dest : destinations) {
             past.put(dest, new HashSet<Message>());
             next.put(dest, 1);
@@ -125,6 +133,14 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<Message> {
             String log = "d " + receivedMessage.getSenderId() + " " + receivedMessage.getSeqNum() + "\n";
             Log.logFile(log);
         }
+        acked.putIfAbsent(receivedMessage, new HashSet<HostIP>());
+        if (!acked.get(receivedMessage).contains(myHostIP)) {
+            acked.get(receivedMessage).add(myHostIP);
+            Metadata metadata = new Metadata(MsgType.ACK, myHostIP.getId(), 0, 0, myHostIP, null);
+            Message ack = new Message(metadata, receivedMessage.toBytes());
+            logger.info("[FIFO] - Sending ACK " + ack.toString());
+            executor.submit(() -> urb.broadcast(ack));
+        }
 
     }
 
@@ -140,11 +156,17 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<Message> {
 
     @Override
     public void onNext(Message item) {
-        process(item);
+        if (item.getMetadata().getType() == MsgType.ACK) {
+            logger.info("[FIFO] - Received ACK " + item.toString());
+            processAck(item);
+            subscription.request(1);
+            return;
+        }
+        processMsg(item);
         subscription.request(1);
     }
 
-    private void process(Message item) {
+    private void processMsg(Message item) {
         // unpack message
         FIFOMessage fifoMessage = unpackMessage(item);
         Message receivedMessage = fifoMessage.getMessage();
@@ -187,6 +209,15 @@ public class FIFOBroadcast implements Broadcaster, Subscriber<Message> {
                 past.get(receivedMessage.getSenderHostIP()).add(receivedMessage);
                 next.put(receivedMessage.getSenderHostIP(), next.get(receivedMessage.getSenderHostIP()) + 1);
             }
+        }
+    }
+
+    private void processAck(Message item) {
+        Message receivedMessage = Message.fromBytes(item.getData());
+        acked.putIfAbsent(receivedMessage, new HashSet<HostIP>());
+        acked.get(receivedMessage).add(item.getSenderHostIP());
+        if (acked.get(receivedMessage).containsAll(destinations)) {
+            past.get(receivedMessage.getSenderHostIP()).remove(receivedMessage);
         }
     }
 

@@ -98,7 +98,7 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
     @Override
     public void deliver(Message msgUnpack) {
         // unpacks message
-        logger.info("[URB] -  Delivering message " + msgUnpack.toString());
+        logger.warning("[URB] -  Delivering message " + msgUnpack.toString());
         if (mustLog) {
             String log = "d " + msgUnpack.getSenderId() + " "
                     + msgUnpack.getSeqNum() + "\n";
@@ -107,6 +107,7 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
             Log.logFile(log);
         }
         publisher.submit(msgUnpack);
+
     }
 
     @Override
@@ -148,7 +149,7 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
             forward.get(msgUnpack.getSenderHostIP()).add(msgUnpack);
 
             logger.info("[URB] -  adding to forward" + forward.toString());
-            Metadata metadata = new Metadata(msgUnpack.getType(), myHostIP.getId(), msgUnpack.getSenderId(),
+            Metadata metadata = new Metadata(MsgType.DATA, myHostIP.getId(), msgUnpack.getSenderId(),
                     msgUnpack.getSeqNum(),
                     myHostIP, msgUnpack.getSenderHostIP());
             Message msg = new Message(metadata, msgUnpack.toBytes());
