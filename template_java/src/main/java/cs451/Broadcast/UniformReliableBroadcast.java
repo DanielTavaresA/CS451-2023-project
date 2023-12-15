@@ -11,6 +11,8 @@ import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,9 +41,13 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
     // private PerfectFailureDetector pfd;
     private Set<HostIP> destinations;
     private Set<Message> delivered;
+    private Lock deliverdLock = new ReentrantLock();
     private ConcurrentHashMap<HostIP, Set<Message>> forward;
+    private Lock forwardLock = new ReentrantLock();
     private ConcurrentHashMap<Message, Set<HostIP>> receivedMsgFromMap;
+    private Lock msgLock = new ReentrantLock();
     private boolean mustLog = false;
+    private boolean logTimestamp = false;
 
     public UniformReliableBroadcast(UDPHost host, Set<HostIP> destinations, ExecutorService executor) {
         beb = new BestEffortBroadcast(host, destinations, executor);
@@ -66,6 +72,10 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
         mustLog = true;
     }
 
+    public void activateTimestampLogging() {
+        logTimestamp = true;
+    }
+
     @Override
     public void broadcast(Message m) {
         // pfd.start();
@@ -74,9 +84,12 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
                 myHostIP, m.getSenderHostIP());
         // empacks message to assure compatibility with lower layers
         Message msg = new Message(metadata, m.toBytes());
-        logger.info("[URB] - Broadcasting message : " + msg.toString() + "\n [URB] - unpacked : " + m.toString());
+        // logger.info("[URB] - Broadcasting message : " + msg.toString() + "\n [URB] -
+        // unpacked : " + m.toString());
         if (mustLog) {
-            String log = "b " + m.getId() + "\n";
+            String log = "b " + m.getSeqNum() + "\n";
+            if (logTimestamp)
+                log += "t " + System.currentTimeMillis() + "\n";
             Log.logFile(log);
         }
         beb.broadcast(msg);
@@ -87,8 +100,10 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
         // unpacks message
         logger.info("[URB] -  Delivering message " + msgUnpack.toString());
         if (mustLog) {
-            String log = "d " + msgUnpack.getSenderId()
-                    + msgUnpack.getId() + "\n";
+            String log = "d " + msgUnpack.getSenderId() + " "
+                    + msgUnpack.getSeqNum() + "\n";
+            if (logTimestamp)
+                log += "t " + System.currentTimeMillis() + "\n";
             Log.logFile(log);
         }
         publisher.submit(msgUnpack);
@@ -102,26 +117,36 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
 
     @Override
     public void onNext(Message item) {
-        process(item);
-        subscription.request(1);
+        executor.submit(() -> {
+            process(item);
+            subscription.request(1);
+        });
+
     }
 
     private void process(Message item) {
         // unpacks message
         Message msgUnpack = Message.fromBytes(item.getData());
-        logger.info("[URB] -  Received message : " + item.toString() + "\n [URB] - unpacked : " + msgUnpack.toString());
-        receivedMsgFromMap.putIfAbsent(msgUnpack, new HashSet<HostIP>());
+        logger.info("[URB] - unpacked : " + msgUnpack.toString() + " from " + item.getSenderHostIP().toString());
 
+        // lock
+
+        msgLock.lock();
+        receivedMsgFromMap.putIfAbsent(msgUnpack, new HashSet<HostIP>());
         // adds sender to the set of hosts that sent the message
         receivedMsgFromMap.get(msgUnpack).add(item.getSenderHostIP());
+        msgLock.unlock();
+        // unlock
 
         logger.info("[URB] -    receivedMsgFromMap : " + receivedMsgFromMap.toString());
         logger.info("[URB] -  forward : " + forward.toString());
 
         // adds message to the set of messages to forward if it is not already in it and
         // broadcasts it
+        forwardLock.lock();
         if (!(forward.get(msgUnpack.getSenderHostIP()).contains(msgUnpack))) {
             forward.get(msgUnpack.getSenderHostIP()).add(msgUnpack);
+
             logger.info("[URB] -  adding to forward" + forward.toString());
             Metadata metadata = new Metadata(msgUnpack.getType(), myHostIP.getId(), msgUnpack.getSenderId(),
                     msgUnpack.getSeqNum(),
@@ -129,7 +154,9 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
             Message msg = new Message(metadata, msgUnpack.toBytes());
             beb.broadcast(msg);
         }
+        forwardLock.unlock();
         checkDeliver(msgUnpack);
+
     }
 
     /**
@@ -141,10 +168,12 @@ public class UniformReliableBroadcast implements Broadcaster, Subscriber<Message
     private void checkDeliver(Message m) {
         logger.info("[URB] - checking if message can be delivered " + m.toString() + " "
                 + receivedMsgFromMap.get(m).toString() + " " + destinations.toString() + " " + delivered.toString());
+        deliverdLock.lock();
         if (!delivered.contains(m) && containsMajority(m)) {
             delivered.add(m);
             deliver(m);
         }
+        deliverdLock.unlock();
     }
 
     private boolean containsMajority(Message m) {
