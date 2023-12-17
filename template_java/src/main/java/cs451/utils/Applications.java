@@ -2,11 +2,14 @@ package cs451.utils;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
+import cs451.Agreement.LatticeAgreement;
 import cs451.Broadcast.BestEffortBroadcast;
 import cs451.Broadcast.FIFOBroadcast;
 import cs451.Broadcast.UniformReliableBroadcast;
@@ -104,13 +107,41 @@ public class Applications {
 
         Set<HostIP> destinations = HostIP.fromHosts(hosts);
 
-        UniformReliableBroadcast fb = new UniformReliableBroadcast(myUDPHost, destinations, executor);
+        FIFOBroadcast fb = new FIFOBroadcast(myUDPHost, destinations, executor);
         fb.activateLogging();
-        fb.activateTimestampLogging();
         for (int i = 1; i <= nbMsg; i++) {
             Metadata metadata = new Metadata(MsgType.DATA, myHostIP.getId(), 0, i, myHostIP, null);
             Message msg = new Message(metadata, "broadcast".getBytes());
             fb.broadcast(msg);
+        }
+
+    }
+
+    public static void runLatticeAgreement(Parser parser) {
+        List<Host> hosts = parser.hosts();
+
+        Host myHost = hosts.get(parser.myId() - 1);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        UDPHost myUDPHost = new UDPHost(myHost, executor);
+        myUDPHost.receive();
+        HostIP myHostIP = myUDPHost.getHostIP();
+
+        String[] config = readLatticeConfig(parser.config());
+        int[] latticeConfig = Stream.of(config[0].split(" ")).map(x -> x.strip()).mapToInt(Integer::parseInt).toArray();
+        int p = latticeConfig[0];
+        int vs = latticeConfig[1];
+        int ds = latticeConfig[2];
+
+        Log.logPath = Paths.get(parser.output());
+
+        Set<HostIP> destinations = HostIP.fromHosts(hosts);
+
+        LatticeAgreement la = new LatticeAgreement(myUDPHost, executor, destinations);
+        for (int i = 1; i <= p; i++) {
+            Set<Integer> proposal = Stream.of(config[i].split(" ")).map(x -> x.strip()).mapToInt(Integer::parseInt)
+                    .collect(HashSet::new,
+                            HashSet::add, HashSet::addAll);
+            la.propose(proposal);
         }
 
     }
@@ -152,6 +183,18 @@ public class Applications {
             return -1;
         }
 
+    }
+
+    private static String[] readLatticeConfig(String path) {
+        try {
+            String content = Files.readString(Paths.get(path));
+            String[] entries = content.strip().split("\n");
+            return entries;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }
