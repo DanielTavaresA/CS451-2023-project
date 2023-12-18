@@ -1,9 +1,9 @@
 package cs451.Agreement;
 
-import java.util.Set;
+import cs451.Models.Proposal;
 
 public interface Agreement {
-    public void propose(Set<Integer> proposal);
+    public void propose(Proposal proposal);
 
-    public void decide(Set<Integer> values);
+    public void decide(Proposal values);
 }

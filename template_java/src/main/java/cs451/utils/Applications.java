@@ -19,6 +19,7 @@ import cs451.Models.HostIP;
 import cs451.Models.Message;
 import cs451.Models.Metadata;
 import cs451.Models.MsgType;
+import cs451.Models.Proposal;
 import cs451.Parser.Host;
 import cs451.Parser.Parser;
 
@@ -138,9 +139,11 @@ public class Applications {
 
         LatticeAgreement la = new LatticeAgreement(myUDPHost, executor, destinations);
         for (int i = 1; i <= p; i++) {
-            Set<Integer> proposal = Stream.of(config[i].split(" ")).map(x -> x.strip()).mapToInt(Integer::parseInt)
+            Set<Integer> proposedValues = Stream.of(config[i].split(" ")).map(x -> x.strip())
+                    .mapToInt(Integer::parseInt)
                     .collect(HashSet::new,
                             HashSet::add, HashSet::addAll);
+            Proposal proposal = new Proposal(0, proposedValues, i);
             la.propose(proposal);
         }
 

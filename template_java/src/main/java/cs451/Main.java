@@ -3,6 +3,7 @@ package cs451;
 import cs451.Parser.Host;
 import cs451.Parser.Parser;
 import cs451.utils.Applications;
+import cs451.utils.Log;
 
 public class Main {
 
@@ -12,6 +13,8 @@ public class Main {
 
         // write/flush output file if necessary
         System.out.println("Writing output.");
+        Log.flush();
+
     }
 
     private static void initSignalHandlers() {

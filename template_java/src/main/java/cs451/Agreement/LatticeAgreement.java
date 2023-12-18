@@ -7,8 +7,10 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow.Subscriber;
@@ -20,6 +22,7 @@ import cs451.Broadcast.BestEffortBroadcast;
 import cs451.Links.PerfectLink;
 import cs451.Links.UDPHost;
 import cs451.Models.HostIP;
+import cs451.Models.LatticeState;
 import cs451.Models.Message;
 import cs451.Models.Metadata;
 import cs451.Models.MsgType;
@@ -29,12 +32,8 @@ import cs451.utils.Log;
 
 public class LatticeAgreement implements Agreement, Subscriber<Message> {
 
-    private boolean active = false;
-    private int ackCount = 0;
-    private int nackCount = 0;
-    private int activePropose = 0;
-    private Set<Integer> proposedValues = new HashSet<Integer>();
-    private Set<Integer> acceptedValues = new HashSet<Integer>();
+    private Map<Integer, LatticeState> slots;
+    private Integer cntSlot;
     private Subscription subscription;
     private Logger logger = Logger.getLogger(LatticeAgreement.class.getName());
 
@@ -46,6 +45,8 @@ public class LatticeAgreement implements Agreement, Subscriber<Message> {
     private Queue<Set<Integer>> pending;
 
     public LatticeAgreement(UDPHost host, ExecutorService executor, Set<HostIP> destinations) {
+        cntSlot = 0;
+        slots = new ConcurrentHashMap<Integer, LatticeState>();
         this.executor = executor;
         myHostIP = host.getHostIP();
         beb = new BestEffortBroadcast(host, destinations, executor);
@@ -54,33 +55,28 @@ public class LatticeAgreement implements Agreement, Subscriber<Message> {
         pending = new ConcurrentLinkedDeque<Set<Integer>>();
         beb.subscribe(this);
         pl.subscribe(this);
-        logger.setLevel(Level.INFO);
+        logger.setLevel(Level.OFF);
     }
 
     @Override
-    public void propose(Set<Integer> proposal) {
-        if (active) {
-            pending.add(proposal);
-            return;
+    public void propose(Proposal proposal) {
+        if (slots.get(proposal.getSlot()) == null) {
+            LatticeState state = new LatticeState(proposal.getSlot(), proposal.getProposedValues());
+            state.setActive(true);
+            slots.put(proposal.getSlot(), state);
         }
-        proposedValues = proposal;
-        active = true;
-        activePropose++;
-        ackCount = 0;
-        nackCount = 0;
-        logger.info("[LA] - Proposing : " + proposal.toString() + " with id : " + activePropose);
+        logger.info("[LA] - Proposing : " + proposal.toString());
         Message m = prepareProposalMsg(proposal);
         beb.broadcast(empack(m));
     }
 
-    private Message prepareProposalMsg(Set<Integer> proposal) {
+    private Message prepareProposalMsg(Proposal proposal) {
         Metadata metadata = new Metadata(MsgType.PROPOSAL, myHostIP.getId(), 0, 0, myHostIP, null);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream outputStream;
         try {
             outputStream = new ObjectOutputStream(bos);
-            Proposal p = new Proposal(activePropose, proposal);
-            outputStream.writeObject(p);
+            outputStream.writeObject(proposal);
             outputStream.flush();
             outputStream.close();
 
@@ -91,12 +87,12 @@ public class LatticeAgreement implements Agreement, Subscriber<Message> {
         return new Message(metadata, data);
     }
 
-    private byte[] prepareNackData(int proposalNb, Set<Integer> proposal) {
+    private byte[] prepareNackData(Proposal proposal, Set<Integer> acceptedValues) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream outputStream;
         try {
             outputStream = new ObjectOutputStream(bos);
-            Proposal p = new Proposal(proposalNb, proposal);
+            Proposal p = new Proposal(proposal.getActivePropose(), acceptedValues, proposal.getSlot());
             outputStream.writeObject(p);
             outputStream.flush();
             outputStream.close();
@@ -132,45 +128,64 @@ public class LatticeAgreement implements Agreement, Subscriber<Message> {
     }
 
     @Override
-    public void decide(Set<Integer> values) {
+    public void decide(Proposal values) {
         logger.log(Level.INFO, "Decided : " + values.toString());
-        String toLog = values.stream().map(Object::toString).reduce((a, b) -> a + " " + b).get() + "\n";
-        Log.logFile(toLog);
-        if (!pending.isEmpty()) {
-            propose(pending.remove());
-        }
+        String toLog = values.getProposedValues().stream().map(Object::toString).reduce((a, b) -> a + " " + b).get()
+                + "\n";
+        Log.addLog(values.getSlot(), toLog);
     }
 
     private void processProposal(Message msg) {
         HostIP sender = msg.getSenderHostIP();
         Proposal proposal = recoverProposal(msg);
         logger.info("[LA] - Processing proposal : " + proposal.toString());
-        if (proposal.getProposedValues().containsAll(acceptedValues)) {
-            acceptedValues.addAll(proposal.getProposedValues());
+        LatticeState state = slots.get(proposal.getSlot());
+        if (state == null) {
+            state = new LatticeState(proposal.getSlot(), proposal.getProposedValues());
+            state.setActive(true);
+            slots.put(proposal.getSlot(), state);
+        }
+        if (proposal.getProposedValues().containsAll(state.getAcceptedValues())) {
+            state.getAcceptedValues().addAll(proposal.getProposedValues());
             Metadata metadata = new Metadata(MsgType.ACK, myHostIP.getId(), sender.getId(), 0, myHostIP, sender);
-            ByteBuffer buffer = ByteBuffer.allocate(4);
+            ByteBuffer buffer = ByteBuffer.allocate(8);
             buffer.putInt(proposal.getActivePropose());
+            buffer.putInt(proposal.getSlot());
             Message ack = new Message(metadata, buffer.array());
+            logger.info("[LA] - Sending ACK for proposal : " + proposal.toString() + " to : " + sender.toString());
             pl.send(empack(ack), sender);
         } else {
-            acceptedValues.addAll(proposal.getProposedValues());
+            state.getAcceptedValues().addAll(proposal.getProposedValues());
             Metadata metadata = new Metadata(MsgType.NACK, myHostIP.getId(), sender.getId(), 0, myHostIP, sender);
-            Message nack = new Message(metadata, prepareNackData(proposal.getActivePropose(), acceptedValues));
+            Message nack = new Message(metadata, prepareNackData(proposal, state.getAcceptedValues()));
+            logger.info("[LA] - Sending NACK for proposal : " + proposal.toString() + " to : " + sender.toString());
             pl.send(empack(nack), sender);
-
         }
     }
 
     private void processAck(Message msg) {
         ByteBuffer buffer = ByteBuffer.wrap(msg.getData());
         int proposalNb = buffer.getInt();
+        int slot = buffer.getInt();
+        LatticeState state = slots.get(slot);
+        if (state == null) {
+            logger.info("[LA] - This state does not exist");
+            return;
+        }
+        if (state.hasResponded(msg.getSenderHostIP())) {
+            logger.info("[LA] - Already responded to this proposal");
+            return;
+        }
         logger.info("[LA] - Processing ACK : " + msg.getMetadata().toString() + " with proposal : "
                 + proposalNb);
-        if (proposalNb == activePropose) {
-            ackCount++;
-            if (ackCount > destinations.size() / 2 && active) {
-                active = false;
-                decide(proposedValues);
+        if (proposalNb == state.getActivePropose()) {
+            state.incrAckCount();
+            state.addAck(msg.getSenderHostIP());
+            logger.info("[LA] - incrementing ack count" + state.getAckCount() + " for slot " + slot);
+            if (state.getAckCount() > destinations.size() / 2 && state.isActive()) {
+                state.setActive(false);
+                Proposal decidedProposal = new Proposal(state.getActivePropose(), state.getProposedValues(), slot);
+                decide(decidedProposal);
             }
         }
     }
@@ -179,14 +194,26 @@ public class LatticeAgreement implements Agreement, Subscriber<Message> {
         Proposal proposal = recoverProposal(msg);
         logger.info("[LA] - Processing NACK : " + msg.getMetadata().toString() + " with proposal : "
                 + proposal.toString());
-        if (proposal.getActivePropose() == activePropose) {
-            nackCount++;
-            proposedValues.addAll(proposal.getProposedValues());
-            if (nackCount + ackCount > destinations.size() / 2 && active) {
-                activePropose++;
-                nackCount = 0;
-                ackCount = 0;
-                Message m = prepareProposalMsg(proposedValues);
+        LatticeState state = slots.get(proposal.getSlot());
+        if (state == null) {
+            logger.info("[LA] - This state does not exist");
+            return;
+        }
+        if (state.hasResponded(msg.getSenderHostIP())) {
+            logger.info("[LA] - Already responded to this proposal");
+            return;
+        }
+        if (proposal.getActivePropose() == state.getActivePropose()) {
+            state.incrNackCount();
+            state.addNack(msg.getSenderHostIP());
+            state.getProposedValues().addAll(proposal.getProposedValues());
+            if (state.getNackCount() + state.getAckCount() > destinations.size() / 2 && state.isActive()) {
+                state.incrActivePropose();
+                state.resetAckCount();
+                state.resetNackCount();
+                Proposal newProposal = new Proposal(state.getActivePropose(), state.getProposedValues(),
+                        proposal.getSlot());
+                Message m = prepareProposalMsg(newProposal);
                 beb.broadcast(empack(m));
             }
         }
